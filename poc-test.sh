@@ -35,12 +35,13 @@ run(){
 ### FUNCTIONS ###
 function runnode() {
  n=$1
+ shift
  datadir=$(ddir $n)
 
  echo "Running btcnode$n"
  mkdir $datadir
  
- run $btcd $net -datadir=$datadir -port=$(port n) -rpcport=$(rport n) -debug=net -logips -daemon
+ run $btcd $net -datadir=$datadir -port=$(port n) -rpcport=$(rport n) -debug=net -logips $@ -daemon
 }
 
 function nodecli() {
@@ -54,14 +55,13 @@ function addconn() {
  n1=$1
  n2=$2
 
- echo "Connecting $n1 to $n2"
-
- ##TODO: Check n1 != n2 
+  ##TODO: Check n1 != n2 
  if [ ${CONNS[$n1$n2]} ] || [ ${CONNS[$n2$n1]} ]; then
-  echo "ERR: Nodes are already connected"
+  #echo "ERR: Nodes are already connected"
   return -1
  fi
 
+ echo "Connecting $n1 to $n2"
  run $btccli $net -rpcport=$(rport $n1) -datadir=$(ddir $n1) addnode 127.0.0.1:$(port $n2) onetry
 
  if [ $? = 0 ]; then
@@ -118,7 +118,7 @@ done
 
 #TODO Run Monitor
 m=$((numnodes + 1))
-runnode $m
+runnode $m -pocmon
 sleep 3
 for i in $(seq 1 $numnodes)
 do
@@ -126,23 +126,25 @@ do
  sleep 3
 done
 
-sleep 30
+sleep 5
 
 #Stop Nodes
 for i in $(seq 1 $numnodes)
 do
   nodecli $i stop
-  sleep 3
 done
 nodecli $m stop
+sleep 3
 
 for i in $(seq 1 $numnodes)
 do
-  echo "LOG Node$i"
+  echo "__________ LOG Node$i __________"
   cat poctest/btcnode$i/regtest/debug.log | grep '\[POC\]'
 done
-echo "MONITOR LOG"
+echo "__________ MONITOR LOG __________"
 cat poctest/btcnode$m/regtest/debug.log | grep '\[POC\]'
+echo "VERIFIED PEERS:"
+cat poctest/btcnode$m/regtest/debug.log | grep 'verified'
 
 
 exit 0
