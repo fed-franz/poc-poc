@@ -127,6 +127,8 @@ do
 done
 
 sleep 5
+echo "GETNETNODESINFO"
+nodecli $m getnetnodesinfo
 
 #Stop Nodes
 for i in $(seq 1 $numnodes)
@@ -145,7 +147,6 @@ echo "__________ MONITOR LOG __________"
 cat poctest/btcnode$m/regtest/debug.log | grep '\[POC\]'
 echo "VERIFIED PEERS:"
 cat poctest/btcnode$m/regtest/debug.log | grep 'verified'
-
 
 exit 0
 
