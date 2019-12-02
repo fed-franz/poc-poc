@@ -116,8 +116,8 @@ do
 done
 
 
-#TODO Run Monitor
-m=$((numnodes + 1))
+#Run Monitor
+m=$((numnodes + 10))
 runnode $m -pocmon
 sleep 3
 for i in $(seq 1 $numnodes)
@@ -126,9 +126,19 @@ do
  sleep 3
 done
 
+#Get Nodes Info
 sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
+
+#Remove node and wait for POC procedure to repeat
+nodecli $numnodes stop
+sleep 10
+echo "GETNETNODESINFO"
+nodecli $m getnetnodesinfo
+
+numnodes=$(($numnodes - 1));
+
 
 #Stop Nodes
 for i in $(seq 1 $numnodes)
@@ -140,13 +150,13 @@ sleep 3
 
 for i in $(seq 1 $numnodes)
 do
-  echo "__________ LOG Node$i __________"
-  cat poctest/btcnode$i/regtest/debug.log | grep '\[POC\]'
+  echo "__________ LOG Node$i __________" > log.txt
+  cat poctest/btcnode$i/regtest/debug.log | grep '\[POC\]' >> log.txt
 done
-echo "__________ MONITOR LOG __________"
-cat poctest/btcnode$m/regtest/debug.log | grep '\[POC\]'
-echo "VERIFIED PEERS:"
-cat poctest/btcnode$m/regtest/debug.log | grep 'verified'
+echo "__________ MONITOR LOG __________" >> log.txt
+cat poctest/btcnode$m/regtest/debug.log | grep '\[POC\]' >> log.txt
+echo "VERIFIED PEERS:" >> log.txt
+cat poctest/btcnode$m/regtest/debug.log | grep 'verified' >> log.txt
 
 exit 0
 
