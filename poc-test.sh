@@ -9,6 +9,10 @@ btccli=btcbin/bitcoin-cli
 net=-regtest
 baseport=1900
 
+omal=-malicious
+runmalicious=false
+malnum=2
+
 declare -A CONNS 
 
 ### MACROS ###
@@ -42,6 +46,14 @@ function runnode() {
  mkdir $datadir
  
  run $btcd $net -datadir=$datadir -port=$(port n) -rpcport=$(rport n) -debug=net -logips $@ -daemon
+}
+
+function runmalnode(){
+  echo "Running malicious node"
+  tmp=$btcd
+  btcd=$btcd-malicious
+  runnode $@
+  btcd=$tmp
 }
 
 function nodecli() {
@@ -87,10 +99,15 @@ mkdir $testdir
 #Create Nodes
 for i in $(seq 1 $numnodes)
 do
-  runnode $i
-  sleep 3
+  if [ $i = $malnum ] && [ $runmalicious = true ]; then
+    runmalnode $i
+  else
+    runnode $i
+  fi
+  sleep 2
 done
 
+# TODO: if numnodes > 4 check at least one outbound per each node
 #Create connections
 for i in $(seq 1 $numconns)
 do
@@ -107,6 +124,11 @@ do
     do
       n2=$(($RANDOM % $numnodes + 1))
     done
+
+    #Don't connect malicious to node1, so it can fake the connection
+    if [ $n1 = $malnum ] && [ $n2 = 1 ]; then
+      n2=$(($RANDOM % $numnodes + 3))
+    fi
 
     addconn $n1 $n2
     status=$?
