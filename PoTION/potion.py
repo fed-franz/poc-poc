@@ -17,12 +17,13 @@ from random import randint
 def createBlockchain(nodesNumber):
     os.system("docker run -it -d --name node1 ubuntu /bin/bash")
     os.system("docker cp ../btcbin node1:/")
-    os.system("docker exec -t node1 /btcbin/bitcoind -regtest -daemon")
-    os.system("docker exec -t node1 apt update")
-    os.system("docker exec -t node1 apt install net-tools -y")
+    os.system("docker exec -t node1 /btcbin/bitcoind -regtest -debug=net -daemon")
+    #os.system("docker exec -t node1 apt update")
+    #os.system("docker exec -t node1 apt install net-tools -y")
 
-    ip = os.popen("docker exec -t node1 ifconfig | grep -o '172.17.0[^ ]*'").read()
-    ipParsed = ip[:len(ip)-1]
+    #ip = os.popen("docker exec -t node1 ifconfig | grep -o '172.17.0[^ ]*'").read()
+    #ipParsed = ip[:len(ip)-1]
+    ipParsed = "172.17.0.2"
     addresses = []
 
     address = os.popen("docker exec -t node1 /btcbin/bitcoin-cli -regtest getnewaddress").read()
@@ -34,8 +35,13 @@ def createBlockchain(nodesNumber):
     for i in range(2, int(nodesNumber) + 1):
         os.system("docker run -it -d --name node" + str(i) + " ubuntu /bin/bash")
         os.system("docker cp ../btcbin node" + str(i) + ":/")
-        os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind -regtest -connect=" + ipParsed + " -daemon")
-        time.sleep(5)
+        os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind -regtest -debug=net -daemon")
+
+    for i in range(2, int(nodesNumber) + 1):
+        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber))) + ':18444" "onetry"')
+        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber))) + ':18444" "onetry"')
+        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber))) + ':18444" "onetry"')
+        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber))) + ':18444" "onetry"')
 
         address = os.popen("docker exec -t node" + str(i) + " /btcbin/bitcoin-cli -regtest getnewaddress").read()
         addresses.append(address)
@@ -43,8 +49,11 @@ def createBlockchain(nodesNumber):
 
     os.system("docker run -it -d --name nodeMonitor ubuntu /bin/bash")
     os.system("docker cp ../btcbin nodeMonitor:/")
-    os.system("docker exec -t nodeMonitor /btcbin/bitcoind -regtest -connect=" + ipParsed + " -daemon")
+    os.system("docker exec -t nodeMonitor /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
     time.sleep(5)
+
+    for i in range(2, int(nodesNumber) + 2):
+        os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
 
     address = os.popen("docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest getnewaddress").read()
     f.write(address)
