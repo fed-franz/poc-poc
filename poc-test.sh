@@ -140,7 +140,6 @@ sleep 3
 for i in $(seq 1 $numnodes)
 do
  addconn $m $i
- sleep 3
 done
 
 #Get Nodes Info
@@ -148,9 +147,14 @@ sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
 
+#Wait 5 secs
+sleep 5
+echo "GETNETNODESINFO (5 secs after)"
+nodecli $m getnetnodesinfo
+
 #Remove node and wait for POC procedure to repeat
 nodecli $numnodes stop
-sleep 10
+sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
 
