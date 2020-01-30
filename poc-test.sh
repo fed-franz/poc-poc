@@ -10,7 +10,7 @@ net=-regtest
 baseport=1900
 
 omal=-malicious
-runmalicious=false
+runmalicious=true
 malnum=2
 
 declare -A CONNS 
@@ -120,15 +120,10 @@ do
     n2=$(($RANDOM % $numnodes + 1))
 
     #Make sure n1 != n2
-    while [ $n1 = $n2 ]
+    while [[ ( "$n1" = "$n2" ) || ( "$runmalicious" = "true" && "$n1" = "$malnum" && "$n2" = "1" ) ]]
     do
       n2=$(($RANDOM % $numnodes + 1))
     done
-
-    #Don't connect malicious to node1, so it can fake the connection
-    if [ $n1 = $malnum ] && [ $n2 = 1 ]; then
-      n2=$(($RANDOM % $numnodes + 3))
-    fi
 
     addconn $n1 $n2
     status=$?
