@@ -140,6 +140,7 @@ sleep 3
 for i in $(seq 1 $numnodes)
 do
  addconn $m $i
+ sleep 1
 done
 
 #Get Nodes Info
@@ -157,11 +158,10 @@ nodecli $numnodes stop
 sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
-
-numnodes=$(($numnodes - 1));
-
+sleep 5
 
 #Stop Nodes
+numnodes=$(($numnodes - 1));
 for i in $(seq 1 $numnodes)
 do
   nodecli $i stop
