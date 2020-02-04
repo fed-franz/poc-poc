@@ -110,6 +110,7 @@ def main():
                     time.sleep(5)
                     os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(nodesNew)).read()
+                    os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
                     t = open('database/bitcoin', 'w')
                     t.write(str(nodesNew))
                     t.close()
@@ -149,7 +150,9 @@ def main():
                                 break
                     except:
                         pass
-                f.write("[" + str(i) + "] " + str(correct) + " | " + str(missing) + " | " + str(potionOutput.count('\n')) + "\n")
+                res = "[" + str(i) + "] " + str(correct) + " | " + str(missing) + " | " + str(potionOutput.count('\n'))
+                f.write(res + "\n")
+                print "\x1b[6;30;42m[log]\x1b[0m : Test result ---> " + res
                 p.write(potionOutput + "\n\n")
                 c.write("\n")
             f.close()
