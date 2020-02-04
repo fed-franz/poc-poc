@@ -125,7 +125,7 @@ def main():
                     for a in range(0,nodesNew-1):
                         for b in range(0,nodesNew-1):
                             try:
-                                if (data[a]["peers"][b]["verified"]):
+                                if not (data[a]["peers"][b]["inbound"]) and (data[a]["peers"][b]["verified"]):
                                     potionOutput = potionOutput + data[a]["peers"][b]["bind"] + " " + data[a]["peers"][b]["addr"] + "\n"
                             except:
                                 pass
@@ -142,7 +142,7 @@ def main():
                         a = 0
                         while True:
                             try:
-                                if (addressMonitor[:len(addressMonitor)-1] not in data[a]["addr"]):
+                                if not (data[a]["inbound"]) and (addressMonitor[:len(addressMonitor)-1] not in data[a]["addr"]):
                                     c.write(data[a]["addrbind"] + " " + data[a]["addr"] + "\n")
                                     if (data[a]["addrbind"] + " " + data[a]["addr"] in potionOutput): correct += 1
                                     else: 
