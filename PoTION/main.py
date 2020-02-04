@@ -24,27 +24,28 @@ def main():
         print "\nUSAGE:\n"
         print "sudo python main.py [OPTION] [arg]\n"
         print "Where 'a' means:"
-        print "-s : Create and populate a bitcoin blockchain of [arg] nodes where [arg2] malicious."
+        print "-s : Create and populate a bitcoin blockchain of [arg] trusty nodes plus [arg2] malicious nodes."
         print "-d : Delete bitcoin blockchain."
         print "-b : Get balances of the nodes."
         print "-a : Retrieve addresses of nodes."
-        print "-t : Test everything for [arg] nodes."
+        print "-t : Test everything [arg] times and get results waiting [arg2] seconds."
         print ""
 
     else:
         if (sys.argv[1] == '-s'):
             nodes = sys.argv[2]
             malicious = sys.argv[3]
+            totalNodes = int(nodes) + int(malicious)
             os.system("mkdir database")
             f = open('database/bitcoin', 'w')
-            f.write(nodes)
+            f.write(str(totalNodes))
             f.close()
 
             command = "nohup python -c 'import potion; potion.createBlockchain(" + nodes + ", " + malicious + ")' > /dev/null 2>&1 &"
             Popen([command], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
             print "\nCreating blockchain...\n"
-	
+    
             items = list(range(1, int(nodes)))
             l = len(items)
             for i, item in enumerate(items):
@@ -84,18 +85,25 @@ def main():
             print ""
 
         if (sys.argv[1] == '-t'):
-            nodes = int(sys.argv[2])
+            t = open('database/bitcoin', 'r')
+            nodes = int(t.read())
+            t.close()
             nodesNew = nodes
+            addressMonitor = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nodeMonitor").read()
             f = open("results.txt", "w")
-            f.write("Test results. Format [<minute>] <correct_connections> | <poc_verified_connections> :\n")
+            p = open("potionout.txt", "w")
+            c = open("nodes.txt", "w")
+            f.write("Test results. Format [<minute>] <correct_connections> | <missing_connections> | <poc_verified_connections> :\n")
 
-            for i in range(0,10):
-
+            for i in range(0,int(sys.argv[2])):
                 what = random.randint(0,1)
                 if (what):
                     change = str(random.randint(1, nodes))
-                    os.system("docker kill node" + str(change))
-                    os.system("docker rm node" + str(change))
+                    try:
+                        os.system("docker kill node" + str(change))
+                        os.system("docker rm node" + str(change))
+                    except:
+                        pass
                 else:
                     nodesNew += 1
                     os.system("docker run -it -d --name node" + str(nodesNew) + " ubuntu /bin/bash")
@@ -104,37 +112,50 @@ def main():
                     time.sleep(7)
                     os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(nodesNew)).read()
-                    os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
+                    os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "' + address[:len(address)-1] + ':18444" "onetry"')
+                    t = open('database/bitcoin', 'w')
+                    t.write(str(nodesNew))
+                    t.close()
 
                 potionOutput = ""
+                time.sleep(int(sys.argv[3]))
+
                 try:
                     info = os.popen("docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest getnetnodesinfo").read()
                     data = json.loads(info)
-                    for a in range(0,nodes-1):
-                        for b in range(0,nodes-1):
-                            potionOutput = potionOutput + data[a]["node"] + " " + data[a]["peers"][b]["addr"] + "\n"
+                    for a in range(0,nodesNew-1):
+                        for b in range(0,nodesNew-1):
+                            try:
+                                potionOutput = potionOutput + data[a]["peers"][b]["bind"] + " " + data[a]["peers"][b]["addr"] + "\n"
+                            except:
+                                pass
                 except:
-                    break
+                    pass
 
                 correct = 0
+                missing = 0
 
-                for x in range(1,nodes+1):
+                for x in range(1,nodesNew+1):
                     try:
                         info = os.popen("docker exec -t node" + str(x) + " /btcbin/bitcoin-cli -regtest getpeerinfo").read()
                         data = json.loads(info)
                         a = 0
                         while True:
                             try:
-                                if ("172.17.0." + str(x+1) + ":18444 " + data[a]["addr"] in potionOutput): correct += 1
-                                print "172.17.0." + str(x+1) + ":18444 " + data[a]["addr"]
+                                if (addressMonitor[:len(addressMonitor)-1] not in data[a]["addr"]):
+                                    c.write(data[a]["addrbind"] + " " + data[a]["addr"] + "\n")
+                                    if (data[a]["addrbind"] + " " + data[a]["addr"] in potionOutput): correct += 1
+                                    else: missing += 1
                                 a+=1
                             except:
                                 break
                     except:
                         pass
-                f.write("[" + str(i) + "]" + str(correct) + " " + str(potionOutput.count('\n')) + "\n")
-                time.sleep(60)
+                f.write("[" + str(i) + "] " + str(correct) + " | " + str(missing) + " | " + str(potionOutput.count('\n')) + "\n")
+                p.write(potionOutput + "\n\n")
+                c.write("\n")
             f.close()
+            p.close()
 
 
 def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
