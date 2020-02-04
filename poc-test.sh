@@ -154,14 +154,27 @@ echo "GETNETNODESINFO (5 secs after)"
 nodecli $m getnetnodesinfo
 
 #Remove node and wait for POC procedure to repeat
+echo "Removing node$numnodes"
 nodecli $numnodes stop
+datadir=$(ddir $n)
+rm -rf $datadir
+sleep 5
+echo "GETNETNODESINFO"
+nodecli $m getnetnodesinfo
+sleep 5
+
+#Add node and wait for POC procedure to repeat
+runnode $numnodes
+addconn $numnodes 1
+addconn $numnodes $(($numnodes - 1))
+addconn $m $numnodes
 sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
 sleep 5
 
 #Stop Nodes
-numnodes=$(($numnodes - 1));
+#numnodes=$(($numnodes - 1));
 for i in $(seq 1 $numnodes)
 do
   nodecli $i stop
