@@ -2,7 +2,7 @@
 
 #################################################
 #                                               #
-# PoTION: Proof of connecTION                   #
+# ATOM: proof of connection                     #
 #                                               #
 # Authors:                                      #
 # Vanesa Daza - vanesa.daza@upf.edu             #
@@ -23,12 +23,10 @@ def main():
     if (len(sys.argv) < 2):
         print "\nUSAGE:\n"
         print "sudo python main.py [OPTION] [arg]\n"
-        print "Where 'a' means:"
-        print "-s : Create and populate a bitcoin blockchain of [arg] trusty nodes plus [arg2] malicious nodes."
+        print "Where [OPTION] means:"
+        print "-s : Create a bitcoin blockchain of [arg] trusty nodes plus [arg2] malicious nodes."
         print "-d : Delete bitcoin blockchain."
-        print "-b : Get balances of the nodes."
-        print "-a : Retrieve addresses of nodes."
-        print "-t : Test everything [arg] times and get results waiting [arg2] seconds."
+        print "-t : Run a [arg] tests and get results waiting [arg2] seconds between tests."
         print ""
 
     else:
@@ -61,28 +59,25 @@ def main():
 
         if (sys.argv[1] == '-d'):
             f = open('database/bitcoin', 'r')
-            command = "nohup python -c 'import potion; potion.deleteBlockchain(" + f.read() + ", \"s\")' > /dev/null 2>&1 &"
+            nodes = f.read()
+            command = "nohup python -c 'import potion; potion.deleteBlockchain(" + nodes + ", \"s\")' > /dev/null 2>&1 &"
             Popen([command], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
             f.close()
 
-        if (sys.argv[1] == '-b'):
-            f = open('database/bitcoin', 'r')
-            potion.getBalances(f.read())
-            f.close()
+            print "\nDestroying blockchain...\n"
+    
+            items = list(range(1, int(nodes)))
+            l = len(items)
+            for i, item in enumerate(items):
+                while True:
+                    if not (os.popen("docker ps | grep -oP node" + str(i+1)).read()):
+                        printProgressBar(i + 1, l + 1, prefix = 'Progress:', suffix = 'Complete...', length = 50)
+                        break
 
-        if (sys.argv[1] == '-a'):
-            f = open('database/bitcoin', 'r')
-            with open("database/addresses", "r") as ins:
-                it = 1
-                snodes = int(f.read())
-                print ""
-                for line in ins:
-                    if (snodes < it ):
-                        print "Address Monitor: " + line[:len(line)-1]
-                    else:
-                        print "Address " + str(it) + ": " + line[:len(line)-1]
-                        it += 1
-            print ""
+            while True:
+                if not (os.popen("docker ps | grep -oP nodeMonitor").read()):
+                    printProgressBar(l + 1, l + 1, prefix = 'Progress:', suffix = 'Complete...', length = 50)
+                    break
 
         if (sys.argv[1] == '-t'):
             t = open('database/bitcoin', 'r')
@@ -90,15 +85,18 @@ def main():
             t.close()
             nodesNew = nodes
             addressMonitor = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nodeMonitor").read()
-            f = open("results.txt", "w")
-            p = open("potionout.txt", "w")
-            c = open("nodes.txt", "w")
-            f.write("Test results. Format [<minute>] <correct_connections> | <missing_connections> | <poc_verified_connections> :\n")
+            f = open("database/results", "w")
+            p = open("database/potionout", "w")
+            c = open("database/nodes", "w")
+            f.write("[<Test>] <correct_connections> | <missing_connections> | <poc_verified_connections> :\n")
 
             for i in range(0,int(sys.argv[2])):
+                print "\x1b[6;30;42m[log]\x1b[0m : Performing test " + str(i) + "... ",
                 what = random.randint(0,1)
                 if (what):
                     change = str(random.randint(1, nodes))
+                    address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(change)).read()
+                    print "Killing node" + str(change) + " with IP " + address,
                     try:
                         os.system("docker kill node" + str(change))
                         os.system("docker rm node" + str(change))
@@ -109,13 +107,13 @@ def main():
                     os.system("docker run -it -d --name node" + str(nodesNew) + " ubuntu /bin/bash")
                     os.system("docker cp ../btcbin node" + str(nodesNew) + ":/")
                     os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -regtest -debug=net -daemon")
-                    time.sleep(7)
+                    time.sleep(5)
                     os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(nodesNew)).read()
-                    os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "' + address[:len(address)-1] + ':18444" "onetry"')
                     t = open('database/bitcoin', 'w')
                     t.write(str(nodesNew))
                     t.close()
+                    print "Creating node" + str(nodesNew) + " with IP " + address,
 
                 potionOutput = ""
                 time.sleep(int(sys.argv[3]))
