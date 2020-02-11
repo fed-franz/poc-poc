@@ -27,7 +27,7 @@ def main():
         print "-s : Create a bitcoin blockchain of [arg] trusty nodes plus [arg2] malicious nodes."
         print "-d : Delete bitcoin blockchain."
         print "-t : Run [arg] tests and get results awaiting [arg2] seconds between tests."
-        print "-r : Randomise the network awaiting [arg] seconds between each change."
+        print "-r : Randomise the network awaiting [arg] seconds between each change and [arg2] ratio of malicious."
         print ""
 
     else:
@@ -88,32 +88,38 @@ def main():
 
             while True:
                 print "\x1b[6;30;42m[log]\x1b[0m : Performing change... ",
-                what = random.randint(0,1)
-                if (what):
+                what = random.randint(0, 1)
+                if not (what):
                     change = str(random.randint(1, nodes))
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(change)).read()
-                    print "Killing node" + str(change) + " with IP " + address,
                     try:
                         os.system("docker kill node" + str(change))
                         os.system("docker rm node" + str(change))
                     except:
                         pass
+
+                    time.sleep(int(sys.argv[2]))
+                    print "Killed node" + str(change) + " with IP " + address,
+
                 else:
+                    what = random.randint(0, 1)
                     nodesNew += 1
                     os.system("docker run -it -d --name node" + str(nodesNew) + " ubuntu /bin/bash")
                     os.system("docker cp ../btcbin node" + str(nodesNew) + ":/")
-                    os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -regtest -debug=net -daemon")
-                    time.sleep(5)
-                    os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
+                    if (what): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind-malicious -regtest -debug=net -daemon")
+                    else: os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -regtest -debug=net -daemon")
+                    time.sleep(int(sys.argv[2]))
+                    if (what): os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli-malicious -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
+                    else: os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(nodesNew)).read()
                     os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
                     t = open('database/bitcoin', 'w')
                     t.write(str(nodesNew))
                     t.close()
-                    print "Creating node" + str(nodesNew) + " with IP " + address,
+                    if (what): print "Creating malicious node" + str(nodesNew) + " with IP " + address,
+                    else: print "Creating node" + str(nodesNew) + " with IP " + address,
 
                 potionOutput = ""
-                time.sleep(int(sys.argv[2]))
 
         if (sys.argv[1] == '-t'):
             addressMonitor = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nodeMonitor").read()
@@ -127,7 +133,7 @@ def main():
                 nodes = int(t.read())
                 t.close()
 
-                print "\x1b[6;30;42m[log]\x1b[0m : Performing test " + str(i) + "... ",
+                print "\x1b[6;30;42m[log]\x1b[0m : Performing test " + str(i) + "..."
                 potionOutput = ""
 
                 try:
