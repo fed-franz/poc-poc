@@ -1,9 +1,6 @@
-# proof-of-connection-poc
-Proof of Concept of the Proof of Connection (POC) protocol
+## AToM Simulation setup
 
-## PoTION (Proof of connecTION) setup
-
-Files for performing the setup using docker are placed into the `/PoTION` folder. 
+Files for performing the setup using docker are placed into the `/SimulationTest` folder. 
 
 ### Usage
 
@@ -26,7 +23,7 @@ Binaries of Bitcon Core implementing the POC protocol are in the 'btcbin' folder
 
 Source code can be found [here](https://github.com/frz-dev/bitcoin-autodaps/tree/proof-of-connection). 
 
-## Test
+## SimpleTest
 Usage:
 `./poc-test.sh NUMNODES NUMCONNECTIONS`  
 
