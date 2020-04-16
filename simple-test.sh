@@ -10,7 +10,7 @@ net=-regtest
 baseport=1900
 
 omal=-malicious
-runmalicious=true
+runmalicious=false
 malnum=2
 
 declare -A CONNS 
@@ -46,6 +46,7 @@ function runnode() {
  mkdir $datadir
  
  run $btcd $net -datadir=$datadir -port=$(port n) -rpcport=$(rport n) -debug=net -logips $@ -daemon
+ sleep 3
 }
 
 function runmalnode(){
@@ -104,7 +105,6 @@ do
   else
     runnode $i
   fi
-  sleep 2
 done
 
 # TODO: if numnodes > 4 check at least one outbound per each node
@@ -129,14 +129,13 @@ do
     status=$?
   done
 
-  sleep 5
+  sleep 2
 done
 
 
 #Run Monitor
 m=$((numnodes + 10))
 runnode $m -pocmon
-sleep 3
 for i in $(seq 1 $numnodes)
 do
  addconn $m $i
@@ -148,25 +147,22 @@ sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
 
-#Wait 5 secs
-sleep 5
-echo "GETNETNODESINFO (5 secs after)"
-nodecli $m getnetnodesinfo
-
 #Remove node and wait for POC procedure to repeat
 echo "Removing node$numnodes"
-nodecli $numnodes stop
-datadir=$(ddir $n)
-rm -rf $datadir
+datadir=$(ddir $numnodes)
+nodecli $numnodes stop 
+#&& rm -rf $datadir
+
 sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
 sleep 5
 
 #Add node and wait for POC procedure to repeat
+numnodes=$(($numnodes + 1))
 runnode $numnodes
 addconn $numnodes 1
-addconn $numnodes $(($numnodes - 1))
+addconn $numnodes 2
 addconn $m $numnodes
 sleep 5
 echo "GETNETNODESINFO"
