@@ -3,6 +3,7 @@
 #Environment
 numnodes=$1
 numconns=$2
+m=$((numnodes + 10))
 testdir=poctest
 btcd=btcbin/bitcoind
 btccli=btcbin/bitcoin-cli
@@ -42,9 +43,13 @@ function runnode() {
  shift
  datadir=$(ddir $n)
 
- echo "Running btcnode$n"
- mkdir $datadir
- 
+ if [ $n = $m ]; then
+   echo "Running M"
+ else
+   echo "Running N$n"
+ fi
+
+ mkdir $datadir 
  run $btcd $net -datadir=$datadir -port=$(port n) -rpcport=$(rport n) -debug=net -logips $@ -daemon
  sleep 3
 }
@@ -74,12 +79,18 @@ function addconn() {
   return -1
  fi
 
- echo "Connecting $n1 to $n2"
+ if [ $n1 = $m ]; then
+   echo "Connecting M to N$n2"
+ else
+   echo "Connecting N$n1 to N$n2"
+ fi
  run $btccli $net -rpcport=$(rport $n1) -datadir=$(ddir $n1) addnode 127.0.0.1:$(port $n2) onetry
 
  if [ $? = 0 ]; then
   CONNS[$n1$n2]=true
  fi
+
+ sleep 1
 
  return $?
 }
@@ -128,13 +139,10 @@ do
     addconn $n1 $n2
     status=$?
   done
-
-  sleep 2
 done
 
 
 #Run Monitor
-m=$((numnodes + 10))
 runnode $m -pocmon
 for i in $(seq 1 $numnodes)
 do
@@ -147,36 +155,60 @@ sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
 
-#Remove node and wait for POC procedure to repeat
-echo "Removing node$numnodes"
-datadir=$(ddir $numnodes)
-nodecli $numnodes stop 
-#&& rm -rf $datadir
+#Remove node
+removed=$(($RANDOM % $numnodes + 1))
+echo "Removing node$removed"
+nodecli $removed stop
+sleep 2
 
+echo "GETNETNODESINFO"
+nodecli $m getnetnodesinfo
+sleep 2
+
+#Add new node
+newnode=$(($numnodes + 1))
+runnode $newnode
+
+#Create connections
+connadded=0
+
+while [ $connadded -ne 1 ]
+do
+  for i in $(seq 1 $numnodes)
+  do
+    connect=$(($RANDOM % 6))
+
+    #If addconn fails, try a different connection
+    if [ $i -ne $removed ] && [ $connect -gt 1 ]; then
+      connadded=1
+      outbound=$(($RANDOM % 2))
+      if [ "$outbound" = "1" ]; then
+        addconn $newnode $i
+      else
+        addconn $i $newnode
+      fi
+    fi
+  done
+done
+
+addconn $m $newnode
 sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
-sleep 5
-
-#Add node and wait for POC procedure to repeat
 numnodes=$(($numnodes + 1))
-runnode $numnodes
-addconn $numnodes 1
-addconn $numnodes 2
-addconn $m $numnodes
-sleep 5
-echo "GETNETNODESINFO"
-nodecli $m getnetnodesinfo
+
 sleep 5
 
 #Stop Nodes
 #numnodes=$(($numnodes - 1));
 for i in $(seq 1 $numnodes)
-do
-  nodecli $i stop
-done
-nodecli $m stop
-sleep 3
+  do
+    if [ $i -ne $removed ]; then
+      nodecli $i stop
+    fi
+  done
+  nodecli $m stop
+  sleep 3
 
 for i in $(seq 1 $numnodes)
 do
@@ -185,8 +217,6 @@ do
 done
 echo "__________ MONITOR LOG __________" >> log.txt
 cat poctest/btcnode$m/regtest/debug.log | grep '\[POC\]' >> log.txt
-echo "VERIFIED PEERS:" >> log.txt
-cat poctest/btcnode$m/regtest/debug.log | grep 'verified' >> log.txt
 
 exit 0
 
