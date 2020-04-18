@@ -4,6 +4,7 @@
 numnodes=$1
 numconns=$2
 m=$((numnodes + 10))
+m2=$((m + 1))
 testdir=poctest
 btcd=btcbin/bitcoind
 btccli=btcbin/bitcoin-cli
@@ -11,7 +12,7 @@ net=-regtest
 baseport=1900
 
 omal=-malicious
-runmalicious=false
+runmalicious=true
 malnum=2
 
 declare -A CONNS 
@@ -45,21 +46,15 @@ function runnode() {
 
  if [ $n = $m ]; then
    echo "Running M"
+ elif [ $n = $m2 ]; then
+   echo "Running M2"
  else
    echo "Running N$n"
  fi
 
  mkdir $datadir 
  run $btcd $net -datadir=$datadir -port=$(port n) -rpcport=$(rport n) -debug=net -logips $@ -daemon
- sleep 3
-}
-
-function runmalnode(){
-  echo "Running malicious node"
-  tmp=$btcd
-  btcd=$btcd-malicious
-  runnode $@
-  btcd=$tmp
+ sleep 4
 }
 
 function nodecli() {
@@ -81,6 +76,8 @@ function addconn() {
 
  if [ $n1 = $m ]; then
    echo "Connecting M to N$n2"
+ elif [ $n1 = $m2 ]; then
+   echo "Connecting M2 to N$n2"
  else
    echo "Connecting N$n1 to N$n2"
  fi
@@ -112,11 +109,26 @@ mkdir $testdir
 for i in $(seq 1 $numnodes)
 do
   if [ $i = $malnum ] && [ $runmalicious = true ]; then
-    runmalnode $i
+    runnode $i $omal
   else
     runnode $i
   fi
 done
+
+#Run Monitor and connect to all nodes
+runnode $m -pocmon
+for i in $(seq 1 $numnodes)
+do
+ addconn $m $i
+done
+
+#Run Monitor and connect to all nodes
+runnode $m2 -pocmon
+for i in $(seq 1 $numnodes)
+do
+ addconn $m2 $i
+done
+
 
 # TODO: if numnodes > 4 check at least one outbound per each node
 #Create connections
@@ -141,19 +153,11 @@ do
   done
 done
 
-
-#Run Monitor
-runnode $m -pocmon
-for i in $(seq 1 $numnodes)
-do
- addconn $m $i
- sleep 1
-done
-
 #Get Nodes Info
 sleep 5
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
+nodecli $m2 getnetnodesinfo
 
 #Remove node
 removed=$(($RANDOM % $numnodes + 1))
@@ -163,15 +167,17 @@ sleep 2
 
 echo "GETNETNODESINFO"
 nodecli $m getnetnodesinfo
+nodecli $m2 getnetnodesinfo
 sleep 2
 
 #Add new node
 newnode=$(($numnodes + 1))
 runnode $newnode
-
-#Create connections
+#Connect monitors to new node
+addconn $m $newnode
+addconn $m2 $newnode
+#Create connections to new node
 connadded=0
-
 while [ $connadded -ne 1 ]
 do
   for i in $(seq 1 $numnodes)
@@ -190,14 +196,12 @@ do
     fi
   done
 done
-
-addconn $m $newnode
-sleep 5
-echo "GETNETNODESINFO"
-nodecli $m getnetnodesinfo
 numnodes=$(($numnodes + 1))
 
 sleep 5
+echo "GETNETNODESINFO"
+nodecli $m getnetnodesinfo
+nodecli $m2 getnetnodesinfo
 
 #Stop Nodes
 #numnodes=$(($numnodes - 1));
@@ -208,6 +212,7 @@ for i in $(seq 1 $numnodes)
     fi
   done
   nodecli $m stop
+  nodecli $m2 stop
   sleep 3
 
 for i in $(seq 1 $numnodes)
