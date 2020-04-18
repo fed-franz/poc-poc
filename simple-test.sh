@@ -2,7 +2,7 @@
 
 #Environment
 numnodes=$1
-numconns=$2
+numadds=$2
 m=$((numnodes + 10))
 m2=$((m + 1))
 testdir=poctest
@@ -14,6 +14,8 @@ baseport=1900
 omal=-malicious
 runmalicious=true
 malnum=2
+
+removed=0
 
 declare -A CONNS 
 
@@ -92,14 +94,53 @@ function addconn() {
  return $?
 }
 
-##### START TEST #####
+function addconns() {
+ node=$1
 
-#Check connections are not above the limit (n(n-1))/2
-maxconn=$(( numnodes*(numnodes-1) / 2 ))
-if [ $numconns -gt $maxconn ]; then
- echo "ERR: Max connections = $maxconn"
- exit 1
-fi
+ connadded=0
+ while [ $connadded -ne 1 ]
+ do
+   for i in $(seq 1 $numnodes)
+   do
+     connect=$(($RANDOM % 6))
+
+     if [ $i -ne $node ] && [ "$i" -ne "$removed" ] && [ $connect -gt 1 ]; then
+       connadded=1
+       outbound=$(($RANDOM % 2))
+       if [ "$outbound" = "1" ]; then
+         addconn $node $i
+       else
+         addconn $i $node
+       fi
+     fi
+   done
+ done
+}
+
+function addnode() {
+  newnode=$(($numnodes + 1))
+  runnode $newnode
+
+  #Connect monitors to new node
+  addconn $m $newnode
+  addconn $m2 $newnode
+
+  #Create connections to new node
+  addconns $newnode
+  numnodes=$(($numnodes + 1))
+
+  sleep 1
+}
+
+function getnodesinfo() {
+  monitor=$1
+
+  echo "GETNETNODESINFO"
+  nodecli $m getnetnodesinfo | grep "node\|addr\|inbound"
+
+}
+
+##### START TEST #####
 
 #Reset Test dir
 rm -rf $testdir
@@ -115,96 +156,60 @@ do
   fi
 done
 
-#Run Monitor and connect to all nodes
+#Run Monitors and connect to all nodes
 runnode $m -pocmon
-for i in $(seq 1 $numnodes)
-do
- addconn $m $i
-done
-
-#Run Monitor and connect to all nodes
 runnode $m2 -pocmon
 for i in $(seq 1 $numnodes)
 do
+ addconn $m $i
  addconn $m2 $i
 done
 
-
-# TODO: if numnodes > 4 check at least one outbound per each node
 #Create connections
-for i in $(seq 1 $numconns)
+for i in $(seq 1 $numnodes)
 do
-  status=1
-
-  #If addconn fails, try a different connection
-  while [ $status -ne 0 ]
-  do
-    n1=$(($RANDOM % $numnodes + 1))
-    n2=$(($RANDOM % $numnodes + 1))
-
-    #Make sure n1 != n2
-    while [[ ( "$n1" = "$n2" ) || ( "$runmalicious" = "true" && "$n1" = "$malnum" && "$n2" = "1" ) ]]
-    do
-      n2=$(($RANDOM % $numnodes + 1))
-    done
-
-    addconn $n1 $n2
-    status=$?
-  done
+ addconns $i
 done
 
+sleep 2
+
+### Init Monitorint ###
+#touch poctest/m1.out
+m2out=poctest/m2.out
+touch $m2out
+
 #Get Nodes Info
-sleep 5
-echo "GETNETNODESINFO"
-nodecli $m getnetnodesinfo
-nodecli $m2 getnetnodesinfo
+getnodesinfo $m
+getnodesinfo $m2 > $m2out
+
+for i in $(seq 1 $numadds)
+do
+  #Add new nodes
+  addnode
+  #Get Nodes Info
+  getnodesinfo $m
+  getnodesinfo $m2 > $m2out
+done
+sleep 2
 
 #Remove node
 removed=$(($RANDOM % $numnodes + 1))
-echo "Removing node$removed"
+echo "REMOVING NODE N$removed"
 nodecli $removed stop
-sleep 2
-
-echo "GETNETNODESINFO"
-nodecli $m getnetnodesinfo
-nodecli $m2 getnetnodesinfo
-sleep 2
-
-#Add new node
-newnode=$(($numnodes + 1))
-runnode $newnode
-#Connect monitors to new node
-addconn $m $newnode
-addconn $m2 $newnode
-#Create connections to new node
-connadded=0
-while [ $connadded -ne 1 ]
-do
-  for i in $(seq 1 $numnodes)
-  do
-    connect=$(($RANDOM % 6))
-
-    #If addconn fails, try a different connection
-    if [ $i -ne $removed ] && [ $connect -gt 1 ]; then
-      connadded=1
-      outbound=$(($RANDOM % 2))
-      if [ "$outbound" = "1" ]; then
-        addconn $newnode $i
-      else
-        addconn $i $newnode
-      fi
-    fi
-  done
-done
-numnodes=$(($numnodes + 1))
+sleep 1
+#Get Nodes Info
+getnodesinfo $m
+getnodesinfo $m2 > $m2out
 
 sleep 5
-echo "GETNETNODESINFO"
-nodecli $m getnetnodesinfo
-nodecli $m2 getnetnodesinfo
+#Get Nodes Info
+echo "FINAL GETNODESINFO"
+getnodesinfo $m
+getnodesinfo $m2 > $m2out
+sleep 2
 
 #Stop Nodes
-#numnodes=$(($numnodes - 1));
+echo "STOPPING NODES"
 for i in $(seq 1 $numnodes)
   do
     if [ $i -ne $removed ]; then
@@ -215,6 +220,7 @@ for i in $(seq 1 $numnodes)
   nodecli $m2 stop
   sleep 3
 
+#Merging logs
 for i in $(seq 1 $numnodes)
 do
   echo "__________ LOG Node$i __________" > log.txt
