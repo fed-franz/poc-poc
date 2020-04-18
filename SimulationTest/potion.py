@@ -27,15 +27,15 @@ def createBlockchain(nodesNumber, maliciousNumber):
     for i in range(int(nodesNumber)+1, int(nodesNumber)+1+int(maliciousNumber)):
         os.system("docker run -it -d --name node" + str(i) + " ubuntu /bin/bash")
         os.system("docker cp ../btcbin/ node" + str(i) + ":/")
-        os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind-malicious -regtest -debug=net -daemon")
+        os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon")
 
     for i in range(1, int(nodesNumber)+1):
         os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
         os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
 
     for i in range(int(nodesNumber)+1, int(nodesNumber)+1+int(maliciousNumber)):
-        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli-malicious -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
-        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli-malicious -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
+        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -malicious -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
+        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -malicious -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
 
     os.system("docker run -it -d --name nodeMonitor ubuntu /bin/bash")
     os.system("docker cp ../btcbin/ nodeMonitor:/")

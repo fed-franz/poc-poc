@@ -13,9 +13,9 @@ Where [OPTION] can be:
 
 -d : Deletes the bitcoin blockchain and all the containers.
 
--b : Prints the bitcoin balances of the nodes.
+-t : Perform tests.
 
--a : Prints the bitcoin addresses of the nodes.
+-r : Randomize.
 
 
 ## Bitcoin Core

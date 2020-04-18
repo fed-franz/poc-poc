@@ -102,14 +102,14 @@ def main():
                     print "Killed node" + str(change) + " with IP " + address,
 
                 else:
-                    what = random.randint(0, 1)
+                    what = random.randint(0, int(sys.argv[3]))
                     nodesNew += 1
                     os.system("docker run -it -d --name node" + str(nodesNew) + " ubuntu /bin/bash")
                     os.system("docker cp ../btcbin node" + str(nodesNew) + ":/")
-                    if (what): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind-malicious -regtest -debug=net -daemon")
+                    if (what): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon")
                     else: os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -regtest -debug=net -daemon")
                     time.sleep(int(sys.argv[2]))
-                    if (what): os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli-malicious -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
+                    if (what): os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -malicious -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
                     else: os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(nodesNew)).read()
                     os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
@@ -142,8 +142,8 @@ def main():
                     for a in range(0,nodes-1):
                         for b in range(0,nodes-1):
                             try:
-                                if not (data[a]["peers"][b]["inbound"]) and (data[a]["peers"][b]["verified"]):
-                                    potionOutput = potionOutput + data[a]["peers"][b]["bind"] + " " + data[a]["peers"][b]["addr"] + "\n"
+                                if not (data[a]["peers"][b]["inbound"]):
+                                    potionOutput = potionOutput + data[a]["peers"][b]["addr"] + "\n"
                             except:
                                 pass
                 except:
@@ -160,11 +160,11 @@ def main():
                         while True:
                             try:
                                 if not (data[a]["inbound"]) and (addressMonitor[:len(addressMonitor)-1] not in data[a]["addr"]):
-                                    c.write(data[a]["addrbind"] + " " + data[a]["addr"] + "\n")
-                                    if (data[a]["addrbind"] + " " + data[a]["addr"] in potionOutput): correct += 1
+                                    c.write(data[a]["addr"] + "\n")
+                                    if (data[a]["addr"] in potionOutput): correct += 1
                                     else: 
                                         missing += 1
-                                        print "\x1b[6;30;42m[log]\x1b[0m : New missing connection --->" + data[a]["addrbind"] + " " + data[a]["addr"]
+                                        print "\x1b[6;30;42m[log]\x1b[0m : New missing connection --->" + data[a]["addr"]
                                 a+=1
                             except:
                                 break
