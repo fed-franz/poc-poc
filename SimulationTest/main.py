@@ -92,6 +92,7 @@ def main():
                 if not (what):
                     change = str(random.randint(1, nodes))
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(change)).read()
+                    if (address[len(address)-1]) == "\n": address = address[:len(address)-1]
                     try:
                         os.system("docker kill node" + str(change))
                         os.system("docker rm node" + str(change))
@@ -106,12 +107,13 @@ def main():
                     nodesNew += 1
                     os.system("docker run -it -d --name node" + str(nodesNew) + " ubuntu /bin/bash")
                     os.system("docker cp ../btcbin node" + str(nodesNew) + ":/")
-                    if (what): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon")
-                    else: os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -regtest -debug=net -daemon")
+                    if (what): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind-f3-tp -malicious -regtest -debug=net -daemon")
+                    else: os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind-f3-tp -regtest -debug=net -daemon")
                     time.sleep(int(sys.argv[2]))
                     if (what): os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
                     else: os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(nodesNew)).read()
+                    if (address[len(address)-1]) == "\n": address = address[:len(address)-1]
                     os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
                     os.system('docker exec -t nodeMonitor2 /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
                     os.system('docker exec -t nodeMonitor3 /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
