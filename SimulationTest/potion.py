@@ -40,14 +40,17 @@ def createBlockchain(nodesNumber, maliciousNumber):
     os.system("docker run -it -d --name nodeMonitor ubuntu /bin/bash")
     os.system("docker cp ../btcbin/ nodeMonitor:/")
     os.system("docker exec -t nodeMonitor /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
+    time.sleep(1)
 
     os.system("docker run -it -d --name nodeMonitor2 ubuntu /bin/bash")
     os.system("docker cp ../btcbin/ nodeMonitor2:/")
     os.system("docker exec -t nodeMonitor2 /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
+    time.sleep(1)
     
     os.system("docker run -it -d --name nodeMonitor3 ubuntu /bin/bash")
     os.system("docker cp ../btcbin/ nodeMonitor3:/")
     os.system("docker exec -t nodeMonitor3 /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
+    time.sleep(1)
     
     os.system("docker run -it -d --name nodeMonitor4 ubuntu /bin/bash")
     os.system("docker cp ../btcbin/ nodeMonitor4:/")
