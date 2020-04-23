@@ -147,7 +147,7 @@ def main():
                         for b in range(0,nodes-1):
                             try:
                                 if not (data[a]["peers"][b]["inbound"]):
-                                    potionOutput = potionOutput + data[a]["peers"][b]["addr"] + "\n"
+                                    potionOutput = potionOutput + data[a]["node"] + " " + data[a]["peers"][b]["addr"] + "\n"
                             except:
                                 pass
                 except:
@@ -166,10 +166,11 @@ def main():
                             try:
                                 if not (data[a]["inbound"]) and (addressMonitor[:len(addressMonitor)-1] not in data[a]["addr"]):
                                     c.write(data[a]["addr"] + "\n")
-                                    if (data[a]["addr"] in potionOutput): correct += 1
+                                    if (data[a]["addrbind"][:len(data[a]["addrbind"])-5] + "18444 " + data[a]["addr"] in potionOutput): correct += 1
                                     else: 
                                         missing += 1
-                                        print "\x1b[6;30;42m[log]\x1b[0m : New missing connection --->" + data[a]["addr"]
+                                        print "potionOutput is:\n" + potionOutput
+                                        print "\x1b[6;30;42m[log]\x1b[0m : New missing connection ---> " + data[a]["addrbind"][:len(data[a]["addrbind"])-5] + "18444 " + data[a]["addr"]
                                 a+=1
                             except:
                                 break                                                               
