@@ -107,8 +107,8 @@ def main():
                     nodesNew += 1
                     os.system("docker run -it -d --name node" + str(nodesNew) + " ubuntu /bin/bash")
                     os.system("docker cp ../btcbin node" + str(nodesNew) + ":/")
-                    if (what): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind-f3-tp -malicious -regtest -debug=net -daemon")
-                    else: os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind-f3-tp -regtest -debug=net -daemon")
+                    if (what): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon")
+                    else: os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -regtest -debug=net -daemon")
                     time.sleep(int(sys.argv[2]))
                     if (what): os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
                     else: os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
