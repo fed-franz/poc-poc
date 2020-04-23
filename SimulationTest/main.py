@@ -143,8 +143,8 @@ def main():
                 try:
                     info = os.popen("docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest getnetnodesinfo").read()
                     data = json.loads(info)
-                    for a in range(0,nodes-1):
-                        for b in range(0,nodes-1):
+                    for a in range(0,nodes):
+                        for b in range(0,nodes):
                             try:
                                 if not (data[a]["peers"][b]["inbound"]):
                                     potionOutput = potionOutput + data[a]["node"] + " " + data[a]["peers"][b]["addr"] + "\n"
