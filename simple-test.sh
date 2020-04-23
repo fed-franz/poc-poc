@@ -6,13 +6,13 @@ numadds=$2
 m=$((numnodes + 10))
 m2=$((m + 1))
 testdir=poctest
-btcd=btcbin/bitcoind
+btcd=btcbin/bitcoind-f3-t01
 btccli=btcbin/bitcoin-cli
 net=-regtest
 baseport=1900
 
 omal=-malicious
-runmalicious=true
+runmalicious=false
 malnum=2
 
 removed=0
