@@ -103,11 +103,12 @@ def main():
                     print "Killed node" + str(change) + " with IP " + address + "\n",
 
                 else:
-                    what = random.randint(0, int(sys.argv[3]))
+                    probMalicious = int(sys.argv[3])
+                    what = random.randint(1, 100)
                     nodesNew += 1
                     os.system("docker run -it -d --name node" + str(nodesNew) + " ubuntu /bin/bash")
                     os.system("docker cp ../btcbin node" + str(nodesNew) + ":/")
-                    if (what): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon")
+                    if (what <= probMalicious): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon")
                     else: os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -regtest -debug=net -daemon")
                     time.sleep(int(sys.argv[2]))
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(nodesNew)).read()
@@ -120,7 +121,7 @@ def main():
                     t = open('database/bitcoin', 'w')
                     t.write(str(nodesNew))
                     t.close()
-                    if (what): print "Creating malicious node" + str(nodesNew) + " with IP " + address + "\n",
+                    if (what <= probMalicious): print "Creating malicious node" + str(nodesNew) + " with IP " + address + "\n",
                     else: print "Creating node" + str(nodesNew) + " with IP " + address + "\n",
 
                     num_conns = random.randint(2, 5)
