@@ -86,11 +86,18 @@ def main():
             t.close()
             nodesNew = nodes
 
+            numMals = 0
+            for i in range(1, int(nodes)+1):
+                ismal = os.popen("docker exec -t node"+str(i)+" ps -x | grep malicious").read()
+                if 'malicious' in ismal :
+                    numMals += 1
+
             while True:
+                print "Num nodes:"+str(nodes)+" (malicious: "+str(numMals)+")"
                 print "\x1b[6;30;42m[log]\x1b[0m : Performing change... ",
                 what = random.randint(0, 1)
                 if not (what):
-                    change = str(random.randint(1, nodes))
+                    change = str(random.randint(1, nodesNew))
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(change)).read()
                     if (address[len(address)-1]) == "\n": address = address[:len(address)-1]
                     try:
@@ -101,14 +108,23 @@ def main():
 
                     time.sleep(int(sys.argv[2]))
                     print "Killed node" + str(change) + " with IP " + address + "\n",
+                    nodes -= 1
 
                 else:
+                    malRatio = (numMals * 100 / nodes)                    
                     probMalicious = int(sys.argv[3])
-                    what = random.randint(1, 100)
+                    if (malRatio < probMalicious):
+                        print "Mal RATIO: "+str(malRatio)
+                        what = True
+                        numMals += 1
+                    else:
+                        what = False
+
+                    #what = random.randint(1, 100)
                     nodesNew += 1
                     os.system("docker run -it -d --name node" + str(nodesNew) + " ubuntu /bin/bash")
                     os.system("docker cp ../btcbin node" + str(nodesNew) + ":/")
-                    if (what <= probMalicious): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon")
+                    if (what): os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon")
                     else: os.system("docker exec -t node" + str(nodesNew) + " /btcbin/bitcoind -regtest -debug=net -daemon")
                     time.sleep(int(sys.argv[2]))
                     address = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node" + str(nodesNew)).read()
@@ -121,7 +137,7 @@ def main():
                     t = open('database/bitcoin', 'w')
                     t.write(str(nodesNew))
                     t.close()
-                    if (what <= probMalicious): print "Creating malicious node" + str(nodesNew) + " with IP " + address + "\n",
+                    if (what): print "Creating malicious node" + str(nodesNew) + " with IP " + address + "\n",
                     else: print "Creating node" + str(nodesNew) + " with IP " + address + "\n",
 
                     num_conns = random.randint(2, 5)
@@ -130,6 +146,8 @@ def main():
                         peeraddr = str(random.randint(2, int(nodes)+1))
                         print "Connecting "+str(nodesNew)+" to "+peeraddr
                         os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + peeraddr + ':18444" "onetry"')
+
+                    nodes +=1
 
 
                 potionOutput = ""
