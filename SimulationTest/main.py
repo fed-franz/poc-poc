@@ -184,9 +184,14 @@ def main():
                 correct = 0
                 missing = 0
 
-                for x in range(1,nodes+1):
+                dockps = os.popen("sudo docker ps --format '{{.Names}}' | grep -v Monitor").read()
+                nodelist = list(dockps.split("\n"))
+                for n in nodelist:
+                    if not n:
+                        break
+                    
                     try:
-                        info = os.popen("docker exec -t node" + str(x) + " /btcbin/bitcoin-cli -regtest getpeerinfo").read()
+                        info = os.popen("docker exec -t " + n + " /btcbin/bitcoin-cli -regtest getpeerinfo").read()
                         data = json.loads(info)
                         a = 0
 
