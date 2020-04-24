@@ -100,7 +100,7 @@ def main():
                         pass
 
                     time.sleep(int(sys.argv[2]))
-                    print "Killed node" + str(change) + " with IP " + address,
+                    print "Killed node" + str(change) + " with IP " + address + "\n",
 
                 else:
                     what = random.randint(0, int(sys.argv[3]))
@@ -116,13 +116,20 @@ def main():
                     os.system('docker exec -t nodeMonitor2 /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
                     os.system('docker exec -t nodeMonitor3 /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
                     os.system('docker exec -t nodeMonitor4 /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
-                    if (what): os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
-                    else: os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(random.randint(2, int(nodes)+1)) + ':18444" "onetry"')
+                    
                     t = open('database/bitcoin', 'w')
                     t.write(str(nodesNew))
                     t.close()
-                    if (what): print "Creating malicious node" + str(nodesNew) + " with IP " + address,
-                    else: print "Creating node" + str(nodesNew) + " with IP " + address,
+                    if (what): print "Creating malicious node" + str(nodesNew) + " with IP " + address + "\n",
+                    else: print "Creating node" + str(nodesNew) + " with IP " + address + "\n",
+
+                    num_conns = random.randint(2, 5)
+                    print "Adding "+str(num_conns)+" new connections"
+                    for i in range(0, num_conns):
+                        peeraddr = str(random.randint(2, int(nodes)+1))
+                        print "Connecting "+str(nodesNew)+" to "+peeraddr
+                        os.system('docker exec -t node' + str(nodesNew) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + peeraddr + ':18444" "onetry"')
+
 
                 potionOutput = ""
 
