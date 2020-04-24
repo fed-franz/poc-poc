@@ -197,8 +197,8 @@ def main():
                                     if (data[a]["addrbind"][:len(data[a]["addrbind"])-5] + "18444 " + data[a]["addr"] in potionOutput): correct += 1
                                     else: 
                                         missing += 1
-                                        print "potionOutput is:\n" + potionOutput
-                                        print "\x1b[6;30;42m[log]\x1b[0m : New missing connection ---> " + data[a]["addrbind"][:len(data[a]["addrbind"])-5] + "18444 " + data[a]["addr"]
+                                        # print "potionOutput is:\n" + potionOutput
+                                        # print "\x1b[6;30;42m[log]\x1b[0m : New missing connection ---> " + data[a]["addrbind"][:len(data[a]["addrbind"])-5] + "18444 " + data[a]["addr"]
                                 a+=1
                             except:
                                 break                                                               
