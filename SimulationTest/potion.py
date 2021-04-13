@@ -13,6 +13,7 @@
 import os
 import time
 from random import randint
+from random import choice
 
 def createBlockchain(nodesNumber, maliciousNumber):
     os.system("docker run -it -d --name node1 ubuntu /bin/bash")
@@ -50,21 +51,29 @@ def createBlockchain(nodesNumber, maliciousNumber):
     os.system("docker exec -t nodeMonitor4 /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
     time.sleep(5)
 
-
-    for i in range(2, int(nodesNumber)+2):
+    totnodes = int(nodesNumber)+1+int(maliciousNumber)
+    
+    # Connect monitors
+    for i in range(2, totnodes+1):
         os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
         os.system('docker exec -t nodeMonitor2 /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
         os.system('docker exec -t nodeMonitor3 /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
         os.system('docker exec -t nodeMonitor4 /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
 
-    for i in range(1, int(nodesNumber)+1):
-        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
-        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
-
-    for i in range(int(nodesNumber)+1, int(nodesNumber)+1+int(maliciousNumber)):
-        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
-        os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(randint(2, int(nodesNumber)+1)) + ':18444" "onetry"')
-    
+    peers = {}
+    for i in range(1, totnodes):
+        peers[i] = [i]
+    for i in range(1, totnodes):
+        for _ in range(2):
+            try:
+                pto = choice([r for r in range(1,totnodes) if r not in peers[i] ])
+                print "node"+str(i)+"-->"+"node"+str(pto)
+                os.system('docker exec -t node' + str(i) + ' /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(pto+1) + ':18444" "onetry"')
+                peers[i].append(pto)
+                peers[pto].append(i)
+            except:
+                print "ERR: could not connect node"+str(i) #TODO: handle this 
+    print peers
 
     return 
 

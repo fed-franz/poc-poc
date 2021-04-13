@@ -119,7 +119,7 @@ function addconns() {
 
 function addnode() {
   newnode=$(($numnodes + 1))
-  runnode $newnode
+  runnode $newnode $1
 
   #Connect monitors to new node
   addconn $m $newnode
@@ -192,16 +192,24 @@ do
 done
 sleep 2
 
-#Remove node
-removed=$(($RANDOM % $numnodes + 1))
-echo "REMOVING NODE N$removed"
-nodecli $removed stop
-sleep 1
-#Get Nodes Info
-getnodesinfo $m
-getnodesinfo $m2 > $m2out
+# #Remove node
+# removed=$(($RANDOM % $numnodes + 1))
+# echo "REMOVING NODE N$removed"
+# nodecli $removed stop
+# sleep 1
+# #Get Nodes Info
+# getnodesinfo $m
+# getnodesinfo $m2 > $m2out
 
-sleep 5
+# #Add malicious nodes
+# echo "ADDING MALICIOUS NODE"
+# addnode "-malicious"
+# #Get Nodes Info
+# getnodesinfo $m
+# getnodesinfo $m2 > $m2out
+# echo ""
+
+sleep 10
 #Get Nodes Info
 echo "FINAL GETNODESINFO"
 getnodesinfo $m
@@ -221,9 +229,10 @@ for i in $(seq 1 $numnodes)
   sleep 3
 
 #Merging logs
+echo "" > log.txt
 for i in $(seq 1 $numnodes)
 do
-  echo "__________ LOG Node$i __________" > log.txt
+  echo "__________ LOG Node$i __________" >> log.txt
   cat poctest/btcnode$i/regtest/debug.log | grep '\[POC\]' >> log.txt
 done
 echo "__________ MONITOR LOG __________" >> log.txt

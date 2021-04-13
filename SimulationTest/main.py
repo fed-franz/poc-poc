@@ -40,23 +40,7 @@ def main():
             f.write(str(totalNodes))
             f.close()
 
-            command = "nohup python -c 'import potion; potion.createBlockchain(" + nodes + ", " + malicious + ")' > /dev/null 2>&1 &"
-            Popen([command], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
-
-            print "\nCreating blockchain...\n"
-    
-            items = list(range(1, int(nodes)))
-            l = len(items)
-            for i, item in enumerate(items):
-                while True:
-                    if (os.popen("docker ps | grep -oP node" + str(i+1)).read()):
-                        printProgressBar(i + 1, l + 1, prefix = 'Progress:', suffix = 'Complete...', length = 50)
-                        break
-
-            while True:
-                if (os.popen("docker ps | grep -oP nodeMonitor4").read()):
-                    printProgressBar(l + 1, l + 1, prefix = 'Progress:', suffix = 'Complete...', length = 50)
-                    break
+            potion.createBlockchain(nodes,malicious)
 
         if (sys.argv[1] == '-d'):
             f = open('database/bitcoin', 'r')
@@ -184,7 +168,7 @@ def main():
                 correct = 0
                 missing = 0
 
-                dockps = os.popen("sudo docker ps --format '{{.Names}}' | grep -v Monitor").read()
+                dockps = os.popen("docker ps --format '{{.Names}}' | grep -v Monitor").read()
                 nodelist = list(dockps.split("\n"))
                 for n in nodelist:
                     if not n:
