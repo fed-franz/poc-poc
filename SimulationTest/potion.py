@@ -27,29 +27,32 @@ def createBlockchain(nodesNumber, maliciousNumber):
         os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind -regtest -debug=net -daemon >/dev/null")
 
     for i in range(int(nodesNumber)+1, int(nodesNumber)+1+int(maliciousNumber)):
-        os.system("docker run -it -d --name node" + str(i) + " ubuntu /bin/bash")
+        print "ADD MALICIOUS node"+str(i)
+        os.system("docker run -it -d --name node" + str(i) + " ubuntu /bin/bash >/dev/null")
         os.system("docker cp ../btcbin/ node" + str(i) + ":/")
-        os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon")
+        os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon >/dev/null")
 
-    
-    os.system("docker run -it -d --name nodeMonitor ubuntu /bin/bash")
-    os.system("docker cp ../btcbin/ nodeMonitor:/")
-    os.system("docker exec -t nodeMonitor /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
-    time.sleep(1)
+    numMonitors = 4
+    for i in range(1, numMonitors):
+        print "ADD nodeMonitor"+str(i)
+        os.system("docker run -it -d --name nodeMonitor"+i+"ubuntu /bin/bash")
+        os.system("docker cp ../btcbin/ nodeMonitor:/")
+        os.system("docker exec -t nodeMonitor /btcbin/bitcoind -regtest -pocmon -debug=net -daemon >/dev/null")
+        time.sleep(1)
 
-    os.system("docker run -it -d --name nodeMonitor2 ubuntu /bin/bash")
-    os.system("docker cp ../btcbin/ nodeMonitor2:/")
-    os.system("docker exec -t nodeMonitor2 /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
-    time.sleep(1)
+    # os.system("docker run -it -d --name nodeMonitor2 ubuntu /bin/bash")
+    # os.system("docker cp ../btcbin/ nodeMonitor2:/")
+    # os.system("docker exec -t nodeMonitor2 /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
+    # time.sleep(1)
     
-    os.system("docker run -it -d --name nodeMonitor3 ubuntu /bin/bash")
-    os.system("docker cp ../btcbin/ nodeMonitor3:/")
-    os.system("docker exec -t nodeMonitor3 /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
-    time.sleep(1)
+    # os.system("docker run -it -d --name nodeMonitor3 ubuntu /bin/bash")
+    # os.system("docker cp ../btcbin/ nodeMonitor3:/")
+    # os.system("docker exec -t nodeMonitor3 /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
+    # time.sleep(1)
     
-    os.system("docker run -it -d --name nodeMonitor4 ubuntu /bin/bash")
-    os.system("docker cp ../btcbin/ nodeMonitor4:/")
-    os.system("docker exec -t nodeMonitor4 /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
+    # os.system("docker run -it -d --name nodeMonitor4 ubuntu /bin/bash")
+    # os.system("docker cp ../btcbin/ nodeMonitor4:/")
+    # os.system("docker exec -t nodeMonitor4 /btcbin/bitcoind -regtest -pocmon -debug=net -daemon")
     time.sleep(5)
 
     totnodes = int(nodesNumber)+1+int(maliciousNumber)
