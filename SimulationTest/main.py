@@ -127,10 +127,11 @@ def changeNet():
             # if(numNodes<8): what=1
             # else: 
             if abs(rms-adds) > 3:
-                if adds>rms: what=True
-                else: what=False
+                if adds>rms: what=False
+                else: what=True
             else:
                 what = random.randint(0, 1)
+                
             if not (what):
                 rms+=1
 
