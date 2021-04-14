@@ -18,12 +18,13 @@ from random import choice
 def createBlockchain(nodesNumber, maliciousNumber):
     os.system("docker run -it -d --name node1 ubuntu /bin/bash")
     os.system("docker cp ../btcbin/ node1:/")
-    os.system("docker exec -t node1 /btcbin/bitcoind -regtest -debug=net -daemon")
+    os.system("docker exec -t node1 /btcbin/bitcoind -regtest -debug=net -daemon") #-nodebuglogfile
 
     for i in range(2, int(nodesNumber)+1):
-        os.system("docker run -it -d --name node" + str(i) + " ubuntu /bin/bash")
+        print "ADD node"+str(i)
+        os.system("docker run -it -d --name node" + str(i) + " ubuntu /bin/bash >/dev/null")
         os.system("docker cp ../btcbin/ node" + str(i) + ":/")
-        os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind -regtest -debug=net -daemon")
+        os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind -regtest -debug=net -daemon >/dev/null")
 
     for i in range(int(nodesNumber)+1, int(nodesNumber)+1+int(maliciousNumber)):
         os.system("docker run -it -d --name node" + str(i) + " ubuntu /bin/bash")
@@ -60,11 +61,12 @@ def createBlockchain(nodesNumber, maliciousNumber):
         os.system('docker exec -t nodeMonitor3 /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
         os.system('docker exec -t nodeMonitor4 /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
 
+    # Connect peers
     peers = {}
     for i in range(1, totnodes):
         peers[i] = [i]
     for i in range(1, totnodes):
-        for _ in range(2):
+        for _ in range(3):
             try:
                 pto = choice([r for r in range(1,totnodes) if r not in peers[i] ])
                 print "node"+str(i)+"-->"+"node"+str(pto)
@@ -78,21 +80,8 @@ def createBlockchain(nodesNumber, maliciousNumber):
     return 
 
 def deleteBlockchain(nodesNumber, chainType):
-    for i in range(1, int(nodesNumber)+2):
-        os.system("docker kill node" + str(i))
-        os.system("docker rm node" + str(i))
-
-    os.system("docker kill nodeMonitor")
-    os.system("docker rm nodeMonitor")
-
-    os.system("docker kill nodeMonitor2")
-    os.system("docker rm nodeMonitor2")
-
-    os.system("docker kill nodeMonitor3")
-    os.system("docker rm nodeMonitor3")
-
-    os.system("docker kill nodeMonitor4")
-    os.system("docker rm nodeMonitor4")
+    os.system("docker stop $(docker ps -a -q)")
+    os.system("docker rm $(docker ps -a -q)")
 
     os.system("rm -rf database")
     os.system("rm potion.pyc")

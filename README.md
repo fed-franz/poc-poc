@@ -2,6 +2,12 @@
 
 Files for performing the setup using docker are placed into the `/SimulationTest` folder. 
 
+### Requirements
+ - Docker
+ - Python 2.7
+ - pip install lockfile
+
+
 ### Usage
 
 ```
