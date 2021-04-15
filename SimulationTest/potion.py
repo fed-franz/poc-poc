@@ -31,7 +31,7 @@ def createBlockchain(nodesNumber, maliciousNumber):
     numMonitors = 4
     for i in range(1, numMonitors):
         print "ADD nodeMonitor"+str(i)
-        os.system("docker run -it -d --name nodeMonitor"+i+"ubuntu /bin/bash")
+        os.system("docker run -it -d --name nodeMonitor"+str(i)+" ubuntu /bin/bash")
         os.system("docker cp ../btcbin/ nodeMonitor:/")
         os.system("docker exec -t nodeMonitor /btcbin/bitcoind -regtest -pocmon -debug=net -daemon >/dev/null")
         time.sleep(1)
@@ -42,10 +42,8 @@ def createBlockchain(nodesNumber, maliciousNumber):
     
     # Connect monitors
     for i in range(2, totnodes+1):
-        os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
-        os.system('docker exec -t nodeMonitor2 /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
-        os.system('docker exec -t nodeMonitor3 /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
-        os.system('docker exec -t nodeMonitor4 /btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
+        for m in range(1,4)
+        os.system('docker exec -t nodeMonitor'+str(m)+'/btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
 
     # Connect peers
     peers = {}
