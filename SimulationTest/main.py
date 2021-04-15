@@ -215,8 +215,8 @@ def changeNet():
 def testAToM():
     addressMonitor = getNodeIP("nodeMonitor1")
     f = open("database/results", "w")
-    f.write("[<Test>] <true_connections> | <correct_connections> | <missing_connections> | <fake_connections> :\n")
-    print "[<\#>] <G> | <TP> | <FN> | <FP> :\n"
+    f.write("[<Test>] <true> | <correct> | <missing> | <fake> :\n")
+    print "[#] G | TP | FN | FP :\n"
 
     lock = LockFile("lock.x")
     for i in range(0,int(sys.argv[2])):        
