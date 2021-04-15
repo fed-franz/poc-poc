@@ -131,7 +131,7 @@ def changeNet():
                 else: what=True
             else:
                 what = random.randint(0, 1)
-                
+
             if not (what):
                 rms+=1
 
@@ -177,10 +177,8 @@ def changeNet():
 
                 # Connect monitors
                 address = getNodeIP(newNode)
-                os.system('docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
-                os.system('docker exec -t nodeMonitor2 /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
-                os.system('docker exec -t nodeMonitor3 /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
-                os.system('docker exec -t nodeMonitor4 /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
+                for m in range(1,4):
+                    os.system('docker exec -t nodeMonitor'+str(m)+' /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
                 
                 if (what): print "NEW malicious " + newNode + " with IP " + address + "\n",
                 else: print "NEW " + newNode + " with IP " + address + "\n",
@@ -201,7 +199,7 @@ def changeNet():
     
                 # Add inbound connections
                 inconns = 0
-                while inconns < 2:
+                while inconns < 1:
                     try:
                         pfrom = choice([r for r in nodeList if r not in newpeers ])
                         print pfrom+"-->"+newNode
@@ -215,7 +213,7 @@ def changeNet():
 #####
 
 def testAToM():
-    addressMonitor = getNodeIP("nodeMonitor")
+    addressMonitor = getNodeIP("nodeMonitor1")
     f = open("database/results", "w")
     f.write("[<Test>] <true_connections> | <correct_connections> | <missing_connections> | <fake_connections> :\n")
     print "[<\#>] <G> | <TP> | <FN> | <FP> :\n"
@@ -259,7 +257,7 @@ def testAToM():
             G_ATOM = {}
             G_M = {}
             # try:
-            info = os.popen("docker exec -t nodeMonitor /btcbin/bitcoin-cli -regtest getnetnodesinfo").read()
+            info = os.popen("docker exec -t nodeMonitor1 /btcbin/bitcoin-cli -regtest getnetnodesinfo").read()
             data = json.loads(info)
             
             for node in range(0,len(data)):
