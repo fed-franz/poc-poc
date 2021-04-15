@@ -42,8 +42,8 @@ def createBlockchain(nodesNumber, maliciousNumber):
     
     # Connect monitors
     for i in range(2, totnodes+1):
-        for m in range(1,4)
-        os.system('docker exec -t nodeMonitor'+str(m)+'/btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
+        for m in range(1,4):
+            os.system('docker exec -t nodeMonitor'+str(m)+'/btcbin/bitcoin-cli -regtest addnode "172.17.0.' + str(i) + ':18444" "onetry"')
 
     # Connect peers
     peers = {}
