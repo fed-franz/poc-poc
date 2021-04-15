@@ -29,7 +29,7 @@ def createBlockchain(nodesNumber, maliciousNumber):
         os.system("docker exec -t node" + str(i) + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon >/dev/null")
 
     numMonitors = 4
-    for i in range(1, numMonitors):
+    for i in range(1, numMonitors+1):
         print "ADD nodeMonitor"+str(i)
         os.system("docker run -it -d --name nodeMonitor"+str(i)+" ubuntu /bin/bash >/dev/null")
         os.system("docker cp ../btcbin/ nodeMonitor"+str(i)+":/")
