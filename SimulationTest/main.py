@@ -20,11 +20,10 @@ import json
 import time
 import random
 from random import choice
-# from filelock import FileLock
 from lockfile import LockFile
 
+NUM_MONS = 4
 
-# mutex = multiprocessing.Lock()
 
 def getNodeList(name="node", exclude="Monitor"):
     nodes = os.popen("docker ps --filter=\"name="+name+"\" --format '{{.Names}}'").readlines()
@@ -126,7 +125,7 @@ def changeNet():
             # TODO do options: new/rm node + new/rm conn
             # if(numNodes<8): what=1
             # else: 
-            if abs(rms-adds) > 3:
+            if abs(rms-adds) > 2:
                 if adds>rms: what=False
                 else: what=True
             else:
@@ -169,15 +168,16 @@ def changeNet():
                 os.system("docker cp ../btcbin " + newNode + ":/")
                 # Run malicious node
                 if (what): 
-                    os.system("docker exec -t " + newNode + " /btcbin/bitcoind -malicious -regtest -debug=net -daemon > /dev/null")
+                    os.system("docker exec -t " + newNode + " /btcbin/bitcoind -malicious -regtest -debug=net -nodebuglogfile -daemon > /dev/null")
                 # Run node
                 else: 
-                    os.system("docker exec -t " + newNode + " /btcbin/bitcoind -regtest -debug=net -daemon > /dev/null")
+                    os.system("docker exec -t " + newNode + " /btcbin/bitcoind -regtest -debug=net -nodebuglogfile -daemon > /dev/null")
                 time.sleep(1)
 
                 # Connect monitors
                 address = getNodeIP(newNode)
-                for m in range(1,4):
+                for m in range(1,NUM_MONS+1):
+                    # print "Connect Monitor"+str(m)
                     os.system('docker exec -t nodeMonitor'+str(m)+' /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
                 
                 if (what): print "NEW malicious " + newNode + " with IP " + address + "\n",
@@ -198,22 +198,21 @@ def changeNet():
                         pass
     
                 # Add inbound connections
-                inconns = 0
-                while inconns < 1:
-                    try:
-                        pfrom = choice([r for r in nodeList if r not in newpeers ])
-                        print pfrom+"-->"+newNode
-                        os.system('docker exec -t ' + pfrom + ' /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
-                        newpeers.append(pfrom)
-                        inconns += 1
-                    except:
-                        pass
+                # inconns = 0
+                # while inconns < 1:
+                #     try:
+                #         pfrom = choice([r for r in nodeList if r not in newpeers ])
+                #         print pfrom+"-->"+newNode
+                #         os.system('docker exec -t ' + pfrom + ' /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
+                #         newpeers.append(pfrom)
+                #         inconns += 1
+                #     except:
+                #         pass
                 
         time.sleep(int(sys.argv[2]))
 #####
 
 def testAToM():
-    addressMonitor = getNodeIP("nodeMonitor1")
     f = open("database/results", "w")
     f.write("[<Test>] <true> | <correct> | <missing> | <fake> :\n")
     print "[#] G | TP | FN | FP :\n"
@@ -226,58 +225,63 @@ def testAToM():
             # for each running node
             nodeList = getNodeList()
             for n in nodeList:
-                # if not n:
-                #     break
-                # try:
-                    # retrieve peers
-                    try:
-                        info = os.popen("docker exec -t " + n + " /btcbin/bitcoin-cli -regtest getpeerinfo").read()
-                        data = json.loads(info)
-                    except:
-                        print "ERROR: "+info
-                        # print "127.0.0.1: "+n
+                # retrieve peers
+                try:
+                    info = os.popen("docker exec -t " + n + " /btcbin/bitcoin-cli -regtest getpeerinfo").read()
+                    data = json.loads(info)
+                except:
+                    print "ERROR: "+info
+                    # print "127.0.0.1: "+n
 
-                    N = getNodeIP(n)
-                    G[N] = []
-                    for peer in range(0,len(data)):
-                        if not (data[peer]["inbound"]):
-                            P_N = IP(data[peer]["addr"])
-                            G[N].append(P_N)
+                N = getNodeIP(n)
+                G[N] = []
+                for peer in range(0,len(data)):
+                    if not (data[peer]["inbound"]):
+                        P_N = IP(data[peer]["addr"])
+                        G[N].append(P_N)
 
-                    # print "G_N"
-                    # print G[N]
-                                                    
-                # except:                    
-                #     pass
+                # print "G_N"
+                # print G[N]                            
 
             # print "G"
             # print G
 
             # Retrieve topology snapshot
-            G_ATOM = {}
-            G_M = {}
-            # try:
-            info = os.popen("docker exec -t nodeMonitor1 /btcbin/bitcoin-cli -regtest getnetnodesinfo").read()
-            data = json.loads(info)
-            
-            for node in range(0,len(data)):
-                N = IP(data[node]["node"])
-                G_M[N] = [] 
+                        
+            vG_M = []
+            for m in range(1,NUM_MONS+1):
+                G_M = {}
+                info = os.popen("docker exec -t nodeMonitor"+str(m)+" /btcbin/bitcoin-cli -regtest getnetnodesinfo").read()
+                data = json.loads(info)
                 
-                for peer in range(0,len(data[node]["peers"])):
-                    # print data[node]["peers"][peer]
-                    P = IP(data[node]["peers"][peer]["addr"])
-                    if not (data[node]["peers"][peer]["inbound"]):
-                        # print "OUT: " + P
-                        G_M[N].append(P)
-                    # else:
-                    #     print "IN: " + P
+                # Parse G_M
+                for node in range(0,len(data)):
+                    N = IP(data[node]["node"])
+                    G_M[N] = [] 
                     
-            # except:
-            #     print "!"
-            #     pass
-            # print G_M
-            G_ATOM = G_M #TODO: set to majority
+                    for peer in range(0,len(data[node]["peers"])):
+                        P = IP(data[node]["peers"][peer]["addr"])
+                        if not (data[node]["peers"][peer]["inbound"]):
+                            G_M[N].append(P)
+                vG_M.append(G_M)
+                    
+            # Build G_ATOM
+            G_ATOM = {}
+            for n in nodeList:
+                G_ATOM[getNodeIP(n)] = {}
+
+            for n in G_ATOM:
+                for G_M in vG_M:
+                    if n in G_M:
+                        for p in G_M[n]:
+                            if p not in G_ATOM[n]:
+                                G_ATOM[n][p] = 1
+                            else: G_ATOM[n][p] += 1
+                    else:
+                        print "WARNING: node mismatch ("+n+") in monitor "+str(m)    
+
+            # print(json.dumps(G_ATOM, indent=4, sort_keys=True))
+            
         
             # Calculate accuracy
             tot=0
@@ -291,12 +295,10 @@ def testAToM():
 
                 for p in G[n]:
                     tot += 1
-                    if p in G_ATOM[n]:
+                    if p in G_ATOM[n] and G_ATOM[n][p]>(NUM_MONS/2):
                         correct += 1
-                        # print "OK"
                     else:
                         miss +=1
-                        # print "MISS"
 
             # Verify G_ATOM does not have fake links
             for n in G_ATOM:
@@ -305,10 +307,9 @@ def testAToM():
                     continue
 
                 for p in G_ATOM[n]:
-                # f.write("[<Test>] <true_connections> | <correct_connections> | <missing_connections> | <fake_connections> :\n")
-                    if p not in G[n]:
+                    if G_ATOM[n][p]>(NUM_MONS/2) and p not in G[n]:
                         fake += 1
-                        print "FAKE:"+n+"->"+p
+                        # print "FAKE:"+n+"->"+p
 
             res = "[" + str(i) + "] " + str(tot) + " | " + str(correct) + " | " + str(miss) + " | " + str(fake)
             print res
