@@ -59,14 +59,13 @@ def createBlockchain(nodesNumber, maliciousNumber):
                 peers[pto].append(i)
             except:
                 print "ERR: could not connect node"+str(i) #TODO: handle this 
-    print peers
+    # print peers
 
     return 
 
-def deleteBlockchain(nodesNumber, chainType):
-    os.system("docker stop $(docker ps -a -q)")
-    os.system("docker rm $(docker ps -a -q)")
+def deleteBlockchain():
+    os.system("docker stop $(docker ps -a -q) >/dev/null")
+    os.system("docker rm $(docker ps -a -q) >/dev/null")
 
-    os.system("rm -rf database")
     os.system("rm potion.pyc")
     return

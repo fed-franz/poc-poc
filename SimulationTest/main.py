@@ -106,7 +106,7 @@ def getPeers(node,bound="all"):
 # mutex = threading.Lock()
 
 def changeNet():
-    lock = LockFile("lock.x")
+    lock = LockFile("lock")
     adds=0
     rms=0
     while True:
@@ -213,12 +213,19 @@ def changeNet():
 #####
 
 def testAToM():
-    f = open("database/results", "w")
-    f.write("[<Test>] <true> | <correct> | <missing> | <fake> :\n")
-    print "[#] G | TP | FN | FP :\n"
+    numTests = int(sys.argv[2])
+    outFile = sys.argv[4]
+    GT=0
+    TP=0
+    FN=0
+    FP=0
 
-    lock = LockFile("lock.x")
-    for i in range(0,int(sys.argv[2])):        
+    f = open("results/"+outFile, "w")
+    f.write("[#] G | TP | FN | FP :\n")
+
+    print "[#] G | TP | FN | FP :\n"
+    lock = LockFile("lock")
+    for i in range(1,numTests+1):        
         with lock:
             # Retrieve topology
             G = {}
@@ -231,7 +238,6 @@ def testAToM():
                     data = json.loads(info)
                 except:
                     print "ERROR: "+info
-                    # print "127.0.0.1: "+n
 
                 N = getNodeIP(n)
                 G[N] = []
@@ -314,12 +320,22 @@ def testAToM():
             res = "[" + str(i) + "] " + str(tot) + " | " + str(correct) + " | " + str(miss) + " | " + str(fake)
             print res
             f.write(res + "\n")
+
+            GT+=tot
+            TP+=correct
+            FN+=miss
+            FP+=fake
+
         time.sleep(int(sys.argv[3]))
     #endfor (Tests)
 
+    finalResult = "[" + str(numTests) + "] " + str(GT) + " | " + str(TP) + " | " + str(FN) + " | " + str(FP)
+    f.write("____________________\n")
+    f.write(finalResult + "\n")
+    f.flush()
     f.close()
             
-#####
+#######################################################
 
 #_____ MAIN _____#
 def main():
@@ -327,8 +343,8 @@ def main():
         print "\nUSAGE:\n"
         print "sudo python main.py [OPTION] [arg]\n"
         print "Where [OPTION] means:"
-        print "-s : Create a bitcoin blockchain of [arg] trusty nodes plus [arg2] malicious nodes."
-        print "-d : Delete bitcoin blockchain."
+        print "-s : Create a bitcoin network of [arg] trusty nodes plus [arg2] malicious nodes."
+        print "-d : Delete bitcoin network."
         print "-t : Run [arg] tests and get results awaiting [arg2] seconds between tests."
         print "-r : Randomise the network awaiting [arg] seconds between each change and [arg2] ratio of malicious."
         print ""
@@ -338,64 +354,27 @@ def main():
             nodes = sys.argv[2]
             malicious = sys.argv[3]
             totalNodes = int(nodes) + int(malicious)
-            os.system("mkdir database")
-            f = open('database/bitcoin', 'w')
-            f.write(str(totalNodes))
-            f.close()
+            os.system("mkdir -p results")
 
             potion.createBlockchain(nodes,malicious)
 
         if (sys.argv[1] == '-d'):
-            f = open('database/bitcoin', 'r')
-            nodes = f.read()
-            command = "nohup python -c 'import potion; potion.deleteBlockchain(" + nodes + ", \"s\")' > /dev/null 2>&1 &"
-            Popen([command], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
-            f.close()
-
-            print "\nDestroying blockchain...\n"
-    
-            items = list(range(1, int(nodes)))
-            l = len(items)
-            for i, item in enumerate(items):
-                while True:
-                    if not (os.popen("docker ps | grep -oP node" + str(i+1)).read()):
-                        printProgressBar(i + 1, l + 1, prefix = 'Progress:', suffix = 'Complete...', length = 50)
-                        break
-
-            while True:
-                if not (os.popen("docker ps | grep -oP nodeMonitor4").read()):
-                    printProgressBar(l + 1, l + 1, prefix = 'Progress:', suffix = 'Complete...', length = 50)
-                    break
+            print "\nDeleting network...\n"
+            potion.deleteBlockchain()
+            print "DONE"    
 
 
         # Create lock file
-        lockfile=open("lock.x","w")
+        lockfile=open("lock","w")
         lockfile.close()
 
         ### CHANGE NETWORK ###
         if (sys.argv[1] == '-r'):
-            # multiprocessing.Process(target=changeNet, arg=(mutex)).start() 
             changeNet()
-            # args=sys.argv
 
         ### TEST ATOM ###
         if (sys.argv[1] == '-t'):
-            # multiprocessing.Process(target=testAToM).start()
             testAToM()
-            # t = threading.Thread(target = testAToM)
-            # t.start()
-            # t.join()
 
-
-def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-
-    sys.stdout.write('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix))
-    sys.stdout.flush()
-
-    if iteration == total:
-        print " Done!\n"
 
 main()
