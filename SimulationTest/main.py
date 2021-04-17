@@ -20,15 +20,13 @@ import json
 import time
 import random
 from random import choice
-# from lockfile import LockFile
-
 import threading
 
-# sem = threading.Semaphore()
 mutex = threading.Lock()
 
 NUM_MONS = 4
-# LOCK = "lockfile"
+nodeDB={}
+
 
 def getNodeList(name="node", exclude="Monitor"):
     nodes = os.popen("docker ps --filter=\"name="+name+"\" --format '{{.Names}}'").readlines()
@@ -64,7 +62,7 @@ def getNodeIP(node):
 def findNode(addr):
     # n = int(addr.split('.')[3]) - 1
     # return "node"+str(n)
-    
+
     # print "findNode "+addr
     nodeList = getNodeList()
     for node in nodeList:
@@ -164,6 +162,10 @@ def changeNet(freq,malicious,stopEvent):
     adds=0
     rms=0
 
+    nodes=getNodeList()
+    for n in nodes:
+        nodeDB[n]=getNodeIP(n)
+
     print "Start NetChange Thread"
     while not stopEvent.wait(0):
         # sem.acquire()
@@ -179,19 +181,19 @@ def changeNet(freq,malicious,stopEvent):
             print "Num nodes:"+str(numNodes)+" (malicious: "+str(numMals)+")"
 
             #Check nodes with less then 3 out peers
-            print "Restore outbound connections"
-            for node in nodeList:
-                fullPeers = getFullPeers(node)
-                numOut = countOutbound(fullPeers)
-                peers = getPeerList(fullPeers)
-                # time.sleep(0.1)
-                unverified = getUnverifiedPeers(node)
+            # print "Restore outbound connections"
+            # for node in nodeList:
+            #     fullPeers = getFullPeers(node)
+            #     numOut = countOutbound(fullPeers)
+            #     peers = getPeerList(fullPeers)
+            #     # time.sleep(0.1)
+            #     unverified = getUnverifiedPeers(node)
 
-                while numOut<3 :
-                    exclude = peers+unverified+[node]
-                    pto = connectNode(node,nodeList,exclude)
-                    exclude.append(pto)
-                    numOut+=1
+            #     while numOut<3 :
+            #         exclude = peers+unverified+[node]
+            #         pto = connectNode(node,nodeList,exclude)
+            #         exclude.append(pto)
+            #         numOut+=1
 
             # TODO do options: new/rm node + new/rm conn
 
@@ -445,19 +447,22 @@ def main():
             numNodes = nodes - numMalicious 
 
             os.system("mkdir -p results")
+            outFile="tst-mal"+str(malicious)+"-var"+str(freq)+".out"
 
             potion.createBlockchain(numNodes, numMalicious)
-            # time.sleep(30)
+            time.sleep(30)
             print "DONE"
 
             stopEvent = threading.Event()
             netThread = threading.Thread(target=changeNet,args=(freq,malicious,stopEvent))
             netThread.start()
-            testThread = threading.Thread(target=testAToM,args=(duration,60,"tst-mal"+str(malicious)+"-var"+str(freq)+".out"))
+            testThread = threading.Thread(target=testAToM,args=(duration,60,outFile))
             testThread.start()
             testThread.join() #waits for testThread to end
             stopEvent.set() #terminates netThread
             netThread.join()
+
+            os.system("cat results/"+outFile)
 
             potion.deleteBlockchain()
 
