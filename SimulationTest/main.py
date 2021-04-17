@@ -62,15 +62,16 @@ def getNodeIP(node):
     return os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "+node).read().rstrip()
 
 def findNode(addr):
-    n = int(addr.split('.')[3]) - 1
-    return "node"+str(n)
-    # # print "findNode "+addr
-    # nodeList = getNodeList()
-    # for node in nodeList:
-    #     nodeAddr = getNodeIP(node)
-    #     # print node+":"+nodeAddr
-    #     if nodeAddr == addr:
-    #         return node
+    # n = int(addr.split('.')[3]) - 1
+    # return "node"+str(n)
+    
+    # print "findNode "+addr
+    nodeList = getNodeList()
+    for node in nodeList:
+        nodeAddr = getNodeIP(node)
+        # print node+":"+nodeAddr
+        if nodeAddr == addr:
+            return node
 
 def getNewNodeName():
     nodeList = getNodeList()
@@ -233,7 +234,7 @@ def changeNet(freq,malicious,stopEvent):
                     what = False
                 
                 newNode = getNewNodeName()
-                os.system("docker run -it -d --name " + newNode + " --net atomnet ubuntu /bin/bash > /dev/null")
+                os.system("docker run -it -d --name " + newNode + " ubuntu /bin/bash > /dev/null") #--net atomnet 
                 os.system("docker cp ../btcbin " + newNode + ":/")
                 # Run malicious node
                 if (what): 
