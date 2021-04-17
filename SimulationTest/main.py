@@ -202,7 +202,10 @@ def changeNet(freq,malicious,stopEvent):
             #     numOut = countOutbound(fullPeers)
             #     peers = getPeerList(fullPeers)
             #     # time.sleep(0.1)
-            #     unverified = getUnverifiedPeers(node)
+            #     if not isMalicious(node):
+            #        unverified = getUnverifiedPeers(node)
+            #     else:
+            #        unverified = []
 
             #     while numOut<3 :
             #         exclude = peers+unverified+[node]
