@@ -149,6 +149,7 @@ def getUnverifiedPeers(node):
         peerList = json.loads(info)
     except:
         handleErr(info,node)
+        return []
 
     return peerList
 
@@ -196,22 +197,28 @@ def changeNet(freq,malicious,stopEvent):
             print "Num nodes:"+str(numNodes)+" (malicious: "+str(numMals)+")"
 
             #Check nodes with less then 3 out peers
-            # print "Restore outbound connections"
-            # for node in nodeList:
-            #     fullPeers = getFullPeers(node)
-            #     numOut = countOutbound(fullPeers)
-            #     peers = getPeerList(fullPeers)
-            #     # time.sleep(0.1)
-            #     if not isMalicious(node):
-            #        unverified = getUnverifiedPeers(node)
-            #     else:
-            #        unverified = []
+            print "Restore outbound connections"
+            skip=[]
+            for node in nodeList:
+                if node not in skip:
+                    fullPeers = getFullPeers(node)
+                    numOut = countOutbound(fullPeers)
+                    peers = getPeerList(fullPeers)
+                    # time.sleep(0.1)
+                    if not isMalicious(node):
+                    unverified = getUnverifiedPeers(node)
+                    else:
+                    unverified = []
 
-            #     while numOut<3 :
-            #         exclude = peers+unverified+[node]
-            #         pto = connectNode(node,nodeList,exclude)
-            #         exclude.append(pto)
-            #         numOut+=1
+                    while numOut<3 :
+                        exclude = peers+unverified+[node]
+                        pto = connectNode(node,nodeList,exclude)
+                        if pto != None:
+                            exclude.append(pto)
+                            numOut+=1
+                            skip.append(node)
+                            break
+                        
 
             # TODO do options: new/rm node + new/rm conn
 
@@ -324,7 +331,7 @@ def testAToM(numTests,freq,outFile):
                         G[N].append(P_N)
 
             # Retrieve topology snapshot                   
-            vG_M = []
+            vG_M = {}
             for m in range(1,NUM_MONS+1):
                 G_M = {}
                 info = os.popen("docker exec -t nodeMonitor"+str(m)+" /btcbin/bitcoin-cli -regtest getnetnodesinfo").read()
@@ -339,7 +346,7 @@ def testAToM(numTests,freq,outFile):
                         P = IP(data[node]["peers"][peer]["addr"])
                         if not (data[node]["peers"][peer]["inbound"]):
                             G_M[N].append(P)
-                vG_M.append(G_M)
+                vG_M[m]=G_M
                     
             # Build G_ATOM
             G_ATOM = {}
@@ -347,7 +354,8 @@ def testAToM(numTests,freq,outFile):
                 G_ATOM[getNodeIP(n)] = {}
 
             for n in G_ATOM:
-                for G_M in vG_M:
+                for m in vG_M:
+                    G_M = vG_M[m]
                     if n in G_M:
                         for p in G_M[n]:
                             if p not in G_ATOM[n]:
