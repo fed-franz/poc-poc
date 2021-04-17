@@ -20,10 +20,15 @@ import json
 import time
 import random
 from random import choice
-from lockfile import LockFile
+# from lockfile import LockFile
+
+import threading
+
+# sem = threading.Semaphore()
+mutex = threading.Lock()
 
 NUM_MONS = 4
-
+# LOCK = "lockfile"
 
 def getNodeList(name="node", exclude="Monitor"):
     nodes = os.popen("docker ps --filter=\"name="+name+"\" --format '{{.Names}}'").readlines()
@@ -54,21 +59,18 @@ def IP(str):
     return str.split(':')[0]
 
 def getNodeIP(node):
-    ip = os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "+node).read().rstrip()
-
-    if ip == "127.0.0.1":
-        print "ERR 127.0.0.1 "+node
-
-    return ip
+    return os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "+node).read().rstrip()
 
 def findNode(addr):
-    # print "findNode "+addr
-    nodeList = getNodeList()
-    for node in nodeList:
-        nodeAddr = getNodeIP(node)
-        # print node+":"+nodeAddr
-        if nodeAddr == addr:
-            return node
+    n = int(addr.split('.')[3]) - 1
+    return "node"+str(n)
+    # # print "findNode "+addr
+    # nodeList = getNodeList()
+    # for node in nodeList:
+    #     nodeAddr = getNodeIP(node)
+    #     # print node+":"+nodeAddr
+    #     if nodeAddr == addr:
+    #         return node
 
 def getNewNodeName():
     nodeList = getNodeList()
@@ -78,6 +80,42 @@ def getNewNodeName():
         num += 1
 
     return "node"+str(num)
+
+def countOutbound(peerList):
+    count=0
+    for p in peerList:
+        if p[1]==False:
+            count+=1
+    return count
+
+def getFullPeers(node):
+    # bool inbound=False
+    peerList=[]
+    try:
+        info = os.popen("docker exec -t " + node + " /btcbin/bitcoin-cli -regtest getpeerinfo").read()
+        data = json.loads(info)
+        for peer in range(0,len(data)):
+            addr = data[peer]["addr"]
+            fInbound = data[peer]["inbound"]
+           
+            pNode = findNode(IP(addr))
+            if pNode != None: # 
+                p = [pNode, fInbound]
+                peerList.append(p)
+    except:
+        pass
+
+    # print "DBG getFullPeers: " + str(peerList)
+
+    return peerList
+
+#Extract peer list from full peer list
+def getPeerList(fullPeers):
+    peerList = []
+    for p in fullPeers:
+        peerList.append(IP(p[0]))
+
+    return peerList
 
 def getPeers(node,bound="all"):
     # bool inbound=False
@@ -102,15 +140,33 @@ def getPeers(node,bound="all"):
 
     return peerList
 
-#################################################
-# mutex = threading.Lock()
+def getUnverifiedPeers(node):
+    info = os.popen("docker exec -t " + node + " /btcbin/bitcoin-cli -regtest getunverified").read()
+    try:
+        peerList = json.loads(info)
+    except:
+        print "ERROR getUnverifiedPeers("+node+"): \n"+info
+        peerList=[]
 
-def changeNet():
-    lock = LockFile("lock")
+    return peerList
+
+def connectNode(node, nodeList, exclude):
+    pto = choice([r for r in nodeList if r not in exclude ])
+    print node+"-->"+pto
+    os.system('docker exec -t ' + node + ' /btcbin/bitcoin-cli -regtest addnode "' + getNodeIP(pto) + ':18444" "onetry"')
+    return pto
+
+#################################################
+
+
+def changeNet(freq,malicious,stopEvent):
     adds=0
     rms=0
-    while True:
-        with lock:
+
+    print "Start NetChange Thread"
+    while not stopEvent.wait(0):
+        # sem.acquire()
+        with mutex:
             nodeList = getNodeList()
             numNodes = len(nodeList)
             numMals = 0
@@ -118,13 +174,26 @@ def changeNet():
                 ismal = os.popen("docker exec -t "+node+" ps -x | grep malicious").read()
                 if 'malicious' in ismal :
                     numMals += 1
-
             print ""
             print "Num nodes:"+str(numNodes)+" (malicious: "+str(numMals)+")"
-            print "\x1b[6;30;42m[log]\x1b[0m : Performing change... ",
+
+            #Check nodes with less then 3 out peers
+            print "Restore outbound connections"
+            for node in nodeList:
+                fullPeers = getFullPeers(node)
+                numOut = countOutbound(fullPeers)
+                peers = getPeerList(fullPeers)
+                # time.sleep(0.1)
+                unverified = getUnverifiedPeers(node)
+
+                while numOut<3 :
+                    exclude = peers+unverified+[node]
+                    pto = connectNode(node,nodeList,exclude)
+                    exclude.append(pto)
+                    numOut+=1
+
             # TODO do options: new/rm node + new/rm conn
-            # if(numNodes<8): what=1
-            # else: 
+
             if abs(rms-adds) > 2:
                 if adds>rms: what=False
                 else: what=True
@@ -139,13 +208,13 @@ def changeNet():
                 print "RM "+rmNode
 
                 #Open new outbound connection for disconnected peers
+                print "Restore outbound connections"
                 inpeers = getPeers(rmNode,"inbound")
                 for node in inpeers:
                     nodepeers = getPeers(node)
-                    pto = choice([r for r in nodeList if r not in nodepeers ])
-                    print node+"-->"+pto
-                    os.system('docker exec -t ' + node + ' /btcbin/bitcoin-cli -regtest addnode "' + getNodeIP(pto) + ':18444" "onetry"')
-                    nodepeers.append(pto)
+                    exclude=nodepeers+[node]
+                    pto=connectNode(node,nodeList,exclude)
+                    exclude.append(pto)
 
                 os.system("docker exec -t " + rmNode + " /btcbin/bitcoin-cli -regtest stop > /dev/null")
                 time.sleep(0.3)
@@ -156,7 +225,7 @@ def changeNet():
                 adds+=1
 
                 malRatio = (numMals * 100 / numNodes)                    
-                probMalicious = int(sys.argv[3])
+                probMalicious = malicious
                 if (malRatio < probMalicious):
                     print "Mal RATIO: "+str(malRatio)
                     what = True
@@ -164,7 +233,7 @@ def changeNet():
                     what = False
                 
                 newNode = getNewNodeName()
-                os.system("docker run -it -d --name " + newNode + " ubuntu /bin/bash > /dev/null")
+                os.system("docker run -it -d --name " + newNode + " --net atomnet ubuntu /bin/bash > /dev/null")
                 os.system("docker cp ../btcbin " + newNode + ":/")
                 # Run malicious node
                 if (what): 
@@ -184,49 +253,38 @@ def changeNet():
                 else: print "NEW " + newNode + " with IP " + address + "\n",
 
                 num_conns = 3
-                newpeers = []
+                # newpeers = [newNode]
+                exclude = [newNode]
                 # for i in range(0, num_conns):
                 outconns = 0
                 while outconns < 3:    
                     try:
-                        pto = choice([r for r in nodeList if r not in newpeers ])
-                        print newNode+"-->"+pto
-                        os.system('docker exec -t ' + newNode + ' /btcbin/bitcoin-cli -regtest addnode "' + getNodeIP(pto) + ':18444" "onetry"')
-                        newpeers.append(pto)
+                        pto=connectNode(newNode,nodeList,exclude)
+                        exclude.append(pto)
                         outconns += 1
                     except:
                         pass
-    
-                # Add inbound connections
-                # inconns = 0
-                # while inconns < 1:
-                #     try:
-                #         pfrom = choice([r for r in nodeList if r not in newpeers ])
-                #         print pfrom+"-->"+newNode
-                #         os.system('docker exec -t ' + pfrom + ' /btcbin/bitcoin-cli -regtest addnode "' + address + ':18444" "onetry"')
-                #         newpeers.append(pfrom)
-                #         inconns += 1
-                #     except:
-                #         pass
-                
-        time.sleep(int(sys.argv[2]))
+            
+            # sem.release()
+            time.sleep(freq)
 #####
 
-def testAToM():
-    numTests = int(sys.argv[2])
-    outFile = sys.argv[4]
+def testAToM(numTests,freq,outFile):
+    print "Start TestAToM Thread"
+
     GT=0
     TP=0
     FN=0
     FP=0
 
+    header = "[#] G | TP | FN | FP :\n"
+    print header
     f = open("results/"+outFile, "w")
-    f.write("[#] G | TP | FN | FP :\n")
+    f.write(header)
 
-    print "[#] G | TP | FN | FP :\n"
-    lock = LockFile("lock")
     for i in range(1,numTests+1):        
-        with lock:
+        # sem.acquire()
+        with mutex:
             # Retrieve topology
             G = {}
             # for each running node
@@ -237,7 +295,7 @@ def testAToM():
                     info = os.popen("docker exec -t " + n + " /btcbin/bitcoin-cli -regtest getpeerinfo").read()
                     data = json.loads(info)
                 except:
-                    print "ERROR: "+info
+                    print "ERROR (testAToM-getpeerinfo("+n+")): "+info
 
                 N = getNodeIP(n)
                 G[N] = []
@@ -246,14 +304,7 @@ def testAToM():
                         P_N = IP(data[peer]["addr"])
                         G[N].append(P_N)
 
-                # print "G_N"
-                # print G[N]                            
-
-            # print "G"
-            # print G
-
-            # Retrieve topology snapshot
-                        
+            # Retrieve topology snapshot                   
             vG_M = []
             for m in range(1,NUM_MONS+1):
                 G_M = {}
@@ -326,7 +377,9 @@ def testAToM():
             FN+=miss
             FP+=fake
 
-        time.sleep(int(sys.argv[3]))
+            # sem.release()
+
+        time.sleep(freq)
     #endfor (Tests)
 
     finalResult = "[" + str(numTests) + "] " + str(GT) + " | " + str(TP) + " | " + str(FN) + " | " + str(FP)
@@ -351,10 +404,9 @@ def main():
 
     else:
         if (sys.argv[1] == '-s'):
-            nodes = sys.argv[2]
-            malicious = sys.argv[3]
-            totalNodes = int(nodes) + int(malicious)
-            os.system("mkdir -p results")
+            nodes = int(sys.argv[2])
+            malicious = int(sys.argv[3])
+            totalNodes = nodes + malicious
 
             potion.createBlockchain(nodes,malicious)
 
@@ -363,18 +415,52 @@ def main():
             potion.deleteBlockchain()
             print "DONE"    
 
-
-        # Create lock file
-        lockfile=open("lock","w")
-        lockfile.close()
-
         ### CHANGE NETWORK ###
         if (sys.argv[1] == '-r'):
-            changeNet()
+            freq = int(sys.argv[2])
+            malicious = int(sys.argv[3])
+            stopEvent = threading.Event()
+
+            changeNet(freq,malicious,stopEvent)
 
         ### TEST ATOM ###
         if (sys.argv[1] == '-t'):
-            testAToM()
+            numTests=int(sys.argv[2])
+            freq=int(sys.argv[3])
+            if len(sys.argv)>4:
+                outFile=sys.argv[4]
+            else:
+                outFile="test.out"
+
+            testAToM(numTests,freq,outFile)
+
+        if (sys.argv[1] == "runtest"):
+            nodes = int(sys.argv[2])
+            malicious = int(sys.argv[3])
+            freq = int(sys.argv[4]) #network changes frequency
+            duration = int(sys.argv[5]) #in minutes (1 test each 60 secs)
+
+            numMalicious = nodes*malicious/100 
+            numNodes = nodes - numMalicious 
+
+            os.system("mkdir -p results")
+
+            potion.createBlockchain(numNodes, numMalicious)
+            # time.sleep(30)
+            print "DONE"
+
+            stopEvent = threading.Event()
+            netThread = threading.Thread(target=changeNet,args=(freq,malicious,stopEvent))
+            netThread.start()
+            testThread = threading.Thread(target=testAToM,args=(duration,60,"tst-mal"+str(malicious)+"-var"+str(freq)+".out"))
+            testThread.start()
+            testThread.join() #waits for testThread to end
+            stopEvent.set() #terminates netThread
+            netThread.join()
+
+            potion.deleteBlockchain()
+
+
 
 
 main()
