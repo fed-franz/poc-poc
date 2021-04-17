@@ -104,7 +104,7 @@ def getFullPeers(node):
                 p = [pNode, fInbound]
                 peerList.append(p)
     except:
-        handleErr(info)
+        handleErr(info,node)
         pass
 
     # print "DBG getFullPeers: " + str(peerList)
@@ -138,17 +138,17 @@ def getPeers(node,bound="all"):
             if pNode != None: # 
                 peerList.append(pNode)
     except:
-        handleErr(info)
+        handleErr(info,node)
         pass
 
     return peerList
 
 def getUnverifiedPeers(node):
-    info = os.popen("docker exec -t " + node + " /btcbin/bitcoin-cli -regtest getunverified").read()
     try:
+        info = os.popen("docker exec -t " + node + " /btcbin/bitcoin-cli -regtest getunverified").read()
         peerList = json.loads(info)
     except:
-        handleErr(info)
+        handleErr(info,node)
 
     return peerList
 
@@ -158,7 +158,7 @@ def connectNode(node, nodeList, exclude):
     try:
         info = os.popen('docker exec -t ' + node + ' /btcbin/bitcoin-cli -regtest addnode "' + getNodeIP(pto) + ':18444" "onetry"').read()
     except:
-        handleErr(info)
+        handleErr(info,node)
         pto=None
 
     return pto
@@ -313,7 +313,7 @@ def testAToM(numTests,freq,outFile):
                     info = os.popen("docker exec -t " + n + " /btcbin/bitcoin-cli -regtest getpeerinfo").read()
                     data = json.loads(info)
                 except:
-                    handleErr(info)
+                    handleErr(info,n)
                     
 
                 N = getNodeIP(n)
