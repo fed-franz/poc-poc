@@ -27,6 +27,11 @@ mutex = threading.Lock()
 NUM_MONS = 4
 nodeDB={}
 
+def handleErr(msg, node):
+    if msg.find('127.0.0.1') > -1:
+        print "ERROR: "+node+" not running. Deleting"
+        os.system("docker stop "+node+" >/dev/null")
+        os.system("docker rm "+node+" >/dev/null")
 
 def getNodeList(name="node", exclude="Monitor"):
     nodes = os.popen("docker ps --filter=\"name="+name+"\" --format '{{.Names}}'").readlines()
@@ -60,9 +65,6 @@ def getNodeIP(node):
     return os.popen("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "+node).read().rstrip()
 
 def findNode(addr):
-    # n = int(addr.split('.')[3]) - 1
-    # return "node"+str(n)
-
     # print "findNode "+addr
     nodeList = getNodeList()
     for node in nodeList:
@@ -102,6 +104,7 @@ def getFullPeers(node):
                 p = [pNode, fInbound]
                 peerList.append(p)
     except:
+        handleErr(info)
         pass
 
     # print "DBG getFullPeers: " + str(peerList)
@@ -135,6 +138,7 @@ def getPeers(node,bound="all"):
             if pNode != None: # 
                 peerList.append(pNode)
     except:
+        handleErr(info)
         pass
 
     return peerList
@@ -144,19 +148,31 @@ def getUnverifiedPeers(node):
     try:
         peerList = json.loads(info)
     except:
-        print "ERROR getUnverifiedPeers("+node+"): \n"+info
-        peerList=[]
+        handleErr(info)
 
     return peerList
 
 def connectNode(node, nodeList, exclude):
     pto = choice([r for r in nodeList if r not in exclude ])
     print node+"-->"+pto
-    os.system('docker exec -t ' + node + ' /btcbin/bitcoin-cli -regtest addnode "' + getNodeIP(pto) + ':18444" "onetry"')
+    try:
+        info = os.popen('docker exec -t ' + node + ' /btcbin/bitcoin-cli -regtest addnode "' + getNodeIP(pto) + ':18444" "onetry"').read()
+    except:
+        handleErr(info)
+        pto=None
+
     return pto
 
-#################################################
+def isMalicious(node):
+    ismal = os.popen("docker exec -t "+node+" ps -x | grep malicious").read()
+    if 'malicious' in ismal :
+        return True
+    else:
+        return False
 
+#################################################
+#TODO: use nodeDB to speed up 
+#TODO: modify bitcoind to auto connect when a peer is disconnected
 
 def changeNet(freq,malicious,stopEvent):
     adds=0
@@ -174,8 +190,7 @@ def changeNet(freq,malicious,stopEvent):
             numNodes = len(nodeList)
             numMals = 0
             for node in nodeList:
-                ismal = os.popen("docker exec -t "+node+" ps -x | grep malicious").read()
-                if 'malicious' in ismal :
+                if isMalicious(node) :
                     numMals += 1
             print ""
             print "Num nodes:"+str(numNodes)+" (malicious: "+str(numMals)+")"
@@ -217,7 +232,6 @@ def changeNet(freq,malicious,stopEvent):
                     nodepeers = getPeers(node)
                     exclude=nodepeers+[node]
                     pto=connectNode(node,nodeList,exclude)
-                    exclude.append(pto)
 
                 os.system("docker exec -t " + rmNode + " /btcbin/bitcoin-cli -regtest stop > /dev/null")
                 time.sleep(0.3)
@@ -261,13 +275,11 @@ def changeNet(freq,malicious,stopEvent):
                 # for i in range(0, num_conns):
                 outconns = 0
                 while outconns < 3:    
-                    try:
-                        pto=connectNode(newNode,nodeList,exclude)
+                    pto=connectNode(newNode,nodeList,exclude)
+                    if pto != None:
                         exclude.append(pto)
                         outconns += 1
-                    except:
-                        pass
-            
+                    
             # sem.release()
             time.sleep(freq)
 #####
@@ -298,7 +310,8 @@ def testAToM(numTests,freq,outFile):
                     info = os.popen("docker exec -t " + n + " /btcbin/bitcoin-cli -regtest getpeerinfo").read()
                     data = json.loads(info)
                 except:
-                    print "ERROR (testAToM-getpeerinfo("+n+")): "+info
+                    handleErr(info)
+                    
 
                 N = getNodeIP(n)
                 G[N] = []
