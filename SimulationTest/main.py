@@ -197,27 +197,27 @@ def changeNet(freq,malicious,stopEvent):
             print "Num nodes:"+str(numNodes)+" (malicious: "+str(numMals)+")"
 
             #Check nodes with less then 3 out peers
-            print "Restore outbound connections"
-            skip=[]
-            for node in nodeList:
-                if node not in skip:
-                    fullPeers = getFullPeers(node)
-                    numOut = countOutbound(fullPeers)
-                    peers = getPeerList(fullPeers)
-                    # time.sleep(0.1)
-                    if not isMalicious(node):
-                        unverified = getUnverifiedPeers(node)
-                    else:
-                        unverified = []
+            # print "Restore outbound connections"
+            # skip=[]
+            # for node in nodeList:
+            #     if node not in skip:
+            #         fullPeers = getFullPeers(node)
+            #         numOut = countOutbound(fullPeers)
+            #         peers = getPeerList(fullPeers)
+            #         # time.sleep(0.1)
+            #         if not isMalicious(node):
+            #             unverified = getUnverifiedPeers(node)
+            #         else:
+            #             unverified = []
 
-                    while numOut<3 :
-                        exclude = peers+unverified+[node]
-                        pto = connectNode(node,nodeList,exclude)
-                        if pto != None:
-                            exclude.append(pto)
-                            numOut+=1
-                            skip.append(node)
-                            break
+            #         while numOut<3 :
+            #             exclude = peers+unverified+[node]
+            #             pto = connectNode(node,nodeList,exclude)
+            #             if pto != None:
+            #                 exclude.append(pto)
+            #                 numOut+=1
+            #                 skip.append(node)
+            #                 break
                         
 
             # TODO do options: new/rm node + new/rm conn
